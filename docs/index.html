@@ -1,0 +1,126 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <title>Editor</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-BmbxuPwQa2lc/FVzBcNJ7UAyJxM6wuqIj61tLrc4wSX0szH/Ev+nYRRuWlolflfl" crossorigin="anonymous">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <script type="text/javascript" id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="./src-noconflict/ace.js" type="text/javascript" charset="utf-8"></script>
+    <script src="./src-noconflict/ext-language_tools.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.2/angular.min.js"></script>
+    <script type="text/javascript" src='js/editor.js'></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/pyodide/v0.17.0/full/pyodide.js"></script>
+</head>
+
+<body>
+
+<div class="container">
+    <div class="row">
+        <div class="col-sm">
+            <a>Keybinding:</a>
+            <div id="keybinding" class="btn-group" role="group" aria-label="Basic radio toggle button group">
+              <input type="radio" class="btn-check" name="btnradio" id="ace" autocomplete="off" checked>
+              <label class="btn btn-outline-primary" for="ace">Ace</label>
+
+              <input type="radio" class="btn-check" name="btnradio" id="vim" autocomplete="off">
+              <label class="btn btn-outline-primary" for="vim">Vim</label>
+
+              <input type="radio" class="btn-check" name="btnradio" id="emacs" autocomplete="off">
+              <label class="btn btn-outline-primary" for="emacs">Emacs</label>
+
+              <input type="radio" class="btn-check" name="btnradio" id="sublime" autocomplete="off">
+              <label class="btn btn-outline-primary" for="sublime">Sublime</label>
+
+              <input type="radio" class="btn-check" name="btnradio" id="vscode" autocomplete="off">
+              <label class="btn btn-outline-primary" for="vscode">VSCode</label>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-lg">
+            <pre id="editor">[ t^3 t^2 t 1 ] [ -1  3 -3  1
+                   3 -6  3  0
+                  -3  3  0  0
+                   1  0  0  0 ] P
+where
+t ∈ ℝ
+P ∈ ℝ^(4 × d)</pre>
+        </div>
+        <div class="col-lg">
+            <button id="compile" class="btn btn-success" onclick="clickCompile()">
+                <i id="submit_icon" class="fa fa-refresh"></i> Compile
+            <!--  <i id="submit_icon" class="fa fa-refresh fa-spin"></i> Compile-->
+            </button>
+            <div id="msg" class="alert alert-primary" role="alert"></div>
+        </div>
+        <div class="col-lg">
+            <div id="output"></div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg">
+            <pre id="cpp">cpp</pre>
+        </div>
+        <div class="col-lg">
+            <pre id="python">python</pre>
+        </div>
+        <div class="col-lg">
+            <pre id="latex">latex</pre>
+        </div>
+    </div>
+</div>
+
+</body>
+
+<script>
+    initPyodide()
+    showMsg(checkBrowserVer());
+    initBtnStatus();
+    //
+    let editor = ace.edit("editor");
+    editor.setTheme("ace/theme/twilight");
+    editor.session.setMode("ace/mode/iheartla");
+    editor.session.on('change', onEditIhla);
+    editor.setOptions({
+        enableBasicAutocompletion: true,
+        enableLiveAutocompletion: true,
+        maxLines: Infinity,
+        minLines: 20
+    });
+
+    let cpp = ace.edit("cpp");
+    cpp.setTheme("ace/theme/twilight");
+    cpp.session.setMode("ace/mode/c_cpp");
+    cpp.setOptions({
+        readOnly: true,
+    });
+
+    let python = ace.edit("python");
+    python.setTheme("ace/theme/twilight");
+    python.session.setMode("ace/mode/python");
+    python.setOptions({
+        readOnly: true,
+    });
+
+    let latex = ace.edit("latex");
+    latex.setTheme("ace/theme/twilight");
+    latex.session.setMode("ace/mode/latex");
+    latex.setOptions({
+        readOnly: true,
+    });
+
+    $('#keybinding input').click(function() {
+        if (this.id == 'ace'){
+            editor.setKeyboardHandler("ace/keyboard/keybinding");
+        }
+        else{
+            editor.setKeyboardHandler("ace/keyboard/"+this.id);
+        }
+    });
+</script>
+
+</html>

@@ -1,0 +1,13 @@
+name: heartdown
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.9
+  - tatsu
+  - regex
+  - sympy
+  - appdirs
+  - pybtex
+  - tornado
+prefix: /Users/anonymous/opt/miniconda3/envs/heartdown

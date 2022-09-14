@@ -2,22 +2,6 @@ import copy
 import hashlib
 import threading
 import time
-
-WHEEL_MODE = False
-if WHEEL_MODE:
-    from linear_algebra.iheartla.la_tools.la_helper import *
-    from linear_algebra.iheartla.la_tools.la_logger import LaLogger
-    from linear_algebra.iheartla.la_parser.parser import ParserTypeEnum
-    import linear_algebra.markdown
-    from linear_algebra.markdown.core import *
-    import linear_algebra.markdown.extensions
-else:
-    from iheartla.la_tools.la_helper import *
-    from iheartla.la_tools.la_logger import LaLogger
-    from iheartla.la_parser.parser import ParserTypeEnum, LaMsg
-    import markdown
-    from markdown.core import *
-    import markdown.extensions
 import logging
 import argparse
 import os.path
@@ -27,6 +11,12 @@ import regex as re
 from textwrap import dedent
 import subprocess
 import sys
+from iheartla.iheartla.la_tools.la_helper import *
+from iheartla.iheartla.la_tools.la_logger import LaLogger
+from iheartla.iheartla.la_parser.parser import ParserTypeEnum, LaMsg
+import markdown.markdown
+import markdown.markdown.extensions
+from markdown.markdown.core import *
 
 
 # Match string: <figure>***</figure>
@@ -271,28 +261,26 @@ def process_input(content, input_dir='.', resource_dir='.', file_name='result',
     record()
     if True:
     # try:
-        extension_list = ['markdown.extensions.mdx_bib', \
-                           'markdown.extensions.iheartla_code', \
-                           'markdown.extensions.mdx_math', \
-                           'markdown.extensions.attr_list', \
-                           'markdown.extensions.fenced_code', \
-                           'markdown.extensions.abbr', \
-                           'markdown.extensions.def_list', \
-                           'markdown.extensions.footnotes', \
-                           'markdown.extensions.md_in_html', \
-                           'markdown.extensions.tables', \
-                           'markdown.extensions.admonition', \
+        extension_list = ['markdown.markdown.extensions.mdx_bib', \
+                           'markdown.markdown.extensions.iheartla_code', \
+                           'markdown.markdown.extensions.mdx_math', \
+                           'markdown.markdown.extensions.attr_list', \
+                           'markdown.markdown.extensions.fenced_code', \
+                           'markdown.markdown.extensions.abbr', \
+                           'markdown.markdown.extensions.def_list', \
+                           'markdown.markdown.extensions.footnotes', \
+                           'markdown.markdown.extensions.md_in_html', \
+                           'markdown.markdown.extensions.tables', \
+                           'markdown.markdown.extensions.admonition', \
                            # 'markdown.extensions.codehilite', \
-                           'markdown.extensions.legacy_attrs', \
-                           'markdown.extensions.legacy_em', \
-                           'markdown.extensions.meta', \
-                           'markdown.extensions.nl2br', \
-                           'markdown.extensions.sane_lists', \
-                           'markdown.extensions.smarty', \
-                           'markdown.extensions.toc', \
-                           'markdown.extensions.wikilinks']
-        if WHEEL_MODE:
-            extension_list = ["linear_algebra.{}".format(ex) for ex in extension_list]
+                           'markdown.markdown.extensions.legacy_attrs', \
+                           'markdown.markdown.extensions.legacy_em', \
+                           'markdown.markdown.extensions.meta', \
+                           'markdown.markdown.extensions.nl2br', \
+                           'markdown.markdown.extensions.sane_lists', \
+                           'markdown.markdown.extensions.smarty', \
+                           'markdown.markdown.extensions.toc', \
+                           'markdown.markdown.extensions.wikilinks']
         md = Markdown(extensions=extension_list,
                                path=input_dir,
                                parser_type=parser_type,

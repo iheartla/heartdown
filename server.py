@@ -8,10 +8,10 @@ import sys
 import subprocess
 import threading
 from datetime import datetime
-from app import process_input, read_from_file, save_to_file, ParserTypeEnum
-from iheartla.la_tools.la_msg import LaMsg
-from iheartla.la_tools.la_helper import *
 from pathlib import Path
+from app import process_input, read_from_file, save_to_file, ParserTypeEnum
+from iheartla.iheartla.la_tools.la_msg import LaMsg
+from iheartla.iheartla.la_tools.la_helper import *
 
 
 default_input = ''

@@ -1,0 +1,15 @@
+*.DS_Store
+*.pyc
+.venv
+*.aux
+*.log
+*.pdf
+*.ps
+*.tex
+*.fls
+*.synctex
+.idea/
+
+# pyinstaller creates these
+/build
+/dist

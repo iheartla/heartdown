@@ -1,0 +1,6 @@
+[submodule "iheartla"]
+	path = iheartla
+	url = https://github.com/iheartla/iheartla.git
+[submodule "markdown"]
+	path = markdown
+	url = https://github.com/iheartla/markdown.git

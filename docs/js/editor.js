@@ -121,8 +121,12 @@ async function onLoad(){
     } catch (e) {
         console.log(e);
     }
-    const replaceRestored = () => !(restored && !restored.reopen && restored.mode === "browser") ||
-        confirm("Replace the paper kept in this browser with the one in this link?");
+    if (restored && !restored.reopen && restored.edited === null) {
+        // kept by an older version of the editor: edited unless it's the example
+        restored.edited = restored.readText(restored.mdPath) !== await (await fetch(STARTER)).text();
+    }
+    const replaceRestored = () => !hasEdits(restored) ||
+        confirm("You've edited the paper kept in this browser. Replace it with the one in this link?");
     if (paperURL !== null && replaceRestored()) {
         await openPaperURL(paperURL, restored);
     } else if (code !== null && (restored && !restored.reopen && restored.mode === "browser" &&
@@ -284,10 +288,16 @@ async function clickNew() {
     await setProject(await newBrowserProject("paper.md", await (await fetch(STARTER)).text()));
 }
 
-// Opening files replaces the paper kept in this browser (but not a folder on disk)
+// Whether replacing this browser paper would lose edits (a folder on disk is never replaced)
+function hasEdits(paper) {
+    if (!paper || paper.reopen || paper.mode !== "browser") return false;
+    return paper.edited || (paper === project && ace.edit("editor").getValue() !== paper.readText(paper.mdPath));
+}
+
+// Opening another paper replaces the paper kept in this browser: ask, if it was edited
 function confirmReplaceBrowserProject() {
-    return project === null || project.mode !== "browser" ||
-        confirm("This replaces the paper kept in this browser and its files. Download a zip of them first if you need them. Continue?");
+    return !hasEdits(project) ||
+        confirm("This replaces the paper kept in this browser, which you've edited, and its files. Download a zip of them first if you need them. Continue?");
 }
 
 async function clickSave() {

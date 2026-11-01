@@ -47,6 +47,9 @@ class Project {
         this.handle = handle;      // FileSystemDirectoryHandle in folder mode
         this.mdPath = null;        // the paper, e.g. "paper.md"
         this.baseURL = null;       // for a paper from a link: where to fetch the files it refers to
+        // Whether the paper was changed here since it was created or loaded: replacing a browser
+        // paper loses only that (null: unknown, kept by an older version of the editor)
+        this.edited = false;
         // Paths changed or removed here since the worker last got them
         this.changed = new Set(files.keys());
         this.removed = new Set();
@@ -79,6 +82,7 @@ class Project {
     // fromWorker: the file came from the worker, which already has it
     async write(path, data, fromWorker = false) {
         const bytes = typeof data === "string" ? encoder.encode(data) : data;
+        const edited = !fromWorker && path === this.mdPath && !this.edited && this.readText(path) !== decoder.decode(bytes);
         this.files.set(path, bytes);
         if (!fromWorker) this.changed.add(path);
         this.removed.delete(path);
@@ -89,6 +93,10 @@ class Project {
             if (!response.ok) throw new Error(`Couldn't save ${path}: ${response.status} ${response.statusText}`);
         } else {
             await idb("files", "readwrite", store => store.put(bytes, path));
+            if (edited) {
+                this.edited = true;
+                await this.remember();
+            }
         }
     }
 
@@ -116,7 +124,8 @@ class Project {
 
     async remember() {
         await idb("meta", "readwrite", store => store.put(
-            { mode: this.mode, name: this.name, mdPath: this.mdPath, handle: this.handle, baseURL: this.baseURL }, "project"));
+            { mode: this.mode, name: this.name, mdPath: this.mdPath, handle: this.handle, baseURL: this.baseURL,
+              edited: this.edited }, "project"));
     }
 }
 
@@ -248,6 +257,7 @@ async function restoreProject() {
     const project = new Project("browser", meta.name, files);
     project.mdPath = meta.mdPath;
     project.baseURL = meta.baseURL || null;
+    project.edited = meta.edited === undefined ? null : meta.edited;
     return project;
 }
 

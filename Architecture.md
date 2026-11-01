@@ -1,13 +1,13 @@
 # H❤️rtDown architecture
 
-H❤️rtDown turns a Markdown paper with I❤️LA code blocks into an interactive web page, plus code libraries (NumPy, C++/Eigen, MATLAB) that the paper's figures and other programs can use. This note describes how it is built and why, and in particular how the editor runs in a browser without a server.
+H❤️rtDown turns a Markdown paper with I❤️LA code blocks into an interactive web page, plus code libraries (NumPy, C++/Eigen, MATLAB) that the paper's figures and other programs can use. This note describes how it is built and why, and in particular how the editor compiles papers in the browser.
 
 ## Overview
 
 ```
 paper.md ──▶ app.py: process_input
-               ├─ Python-Markdown (markdown submodule) with H❤️rtDown's extensions:
-               │    iheartla_code ── compiles each context's I❤️LA code ──▶ I❤️LA compiler (iheartla submodule)
+               ├─ Python-Markdown (deps/markdown) with H❤️rtDown's extensions:
+               │    iheartla_code ── compiles each context's I❤️LA code ──▶ I❤️LA compiler (deps/iheartla)
                │    mdx_bib, mdx_math, meta (YAML front matter), …
                ├─ post-processing: title, abstract, section numbers, contexts, equation numbers
                ├─ figures: runs each <figure>'s Python code against the generated lib.py
@@ -16,10 +16,10 @@ paper.md ──▶ app.py: process_input
 
 There are two ways to run it:
 
-- **The command line:** `python app.py --paper paper.md`.
-- **The editor in `docs/`:** a static web page that runs the same Python code in [Pyodide](https://pyodide.org).
+- **The command line:** `uv run heartdown --paper paper.md` (`app.main`).
+- **The editor in `docs/`:** a web page that runs the same Python code in [Pyodide](https://pyodide.org). It can be served from anywhere, or by `server.py` for a paper on disk.
 
-The editor used to be a Tornado server (`server.py`) that the page called for every compile. That server is gone.
+The editor used to call a Tornado server (`server.py`) for every compile, which ran H❤️rtDown natively. Now `server.py` is a small standard-library server that only serves the editor and the paper's files; compiling happens in the browser in every case.
 
 ## The compiler pipeline (Python)
 
@@ -29,7 +29,7 @@ The editor used to be a Tornado server (`server.py`) that the page called for ev
 - `compile_paper()` wraps it for the editor. It reports errors in a dict instead of raising them, including the I❤️LA code that has the error, so the editor can highlight it.
 - `run_figure()` re-runs one figure's code after it is edited in the editor.
 
-The Markdown processing is Python-Markdown with H❤️rtDown's extensions, in the `markdown` submodule. `iheartla_code` does most of the work:
+The Markdown processing is Python-Markdown with H❤️rtDown's extensions, in `deps/markdown`. `iheartla_code` does most of the work:
 
 - It groups the I❤️LA blocks of a paper by context (`❤: name`) and compiles each context with `compile_la_content(..., get_json=True)`. That returns the code for each output, plus the equation data: symbols, types, descriptions and dependencies.
 - It replaces each block with MacroMathJax that the paper's `paper.js` makes clickable.
@@ -53,17 +53,18 @@ js/heartdown-worker.js      (disk or IndexedDB)         │ GET paper/<session>/
    /paper = mirror of the folder
 ```
 
-- **`js/heartdown-worker.js`** (a module Web Worker) loads Pyodide, the vendored packages and `heartdown-py.zip`. That zip holds `app.py`, the `markdown` and `iheartla` Python code and `extras/heartdown-resource`, laid out as in this repository.
+- **`js/heartdown-worker.js`** (a module Web Worker) loads Pyodide, the vendored packages and `heartdown-py.zip`. That zip holds `app.py`, `extras/heartdown-resource`, and the `iheartla` and `markdown` packages at the top level, as if installed.
   - The paper's folder is mirrored at `/paper` in Pyodide's file system.
   - Each request (`compile`, `figure`, `reset`) carries the files that changed in the editor since the last one.
   - Each reply carries the files that the compile or figure run wrote. The worker finds them by comparing modification times and sizes before and after the run.
-- **`js/project.js`** holds the open paper's folder: every file, in memory, keyed by its path in the folder. It stores the folder in one of two ways (below). It also answers the service worker's requests and builds zip downloads.
+- **`js/project.js`** holds the open paper's folder: every file, in memory, keyed by its path in the folder. It stores the folder in one of three ways (below). It also answers the service worker's requests and builds zip downloads.
 - **`sw.js`** serves `paper/<session>/<path>` to the preview `<iframe>`. It asks the editor tab with that session id for the file. The generated `paper.html` can therefore load its images, figures and `heartdown-resource/` through relative URLs, exactly as it did from the server and as it does from disk. The iframe has the editor's origin, so `paper.js` can still call the editor (`parent.onEditEquation`, `parent.onClickFigure`, `parent.showMsg`).
 - **`js/editor.js`** is the old editor's UI (Ace, equation and figure dialogs, Unicode shortcuts), with its server calls replaced by worker requests and file I/O.
 
 ### Storage
 
-- **Folder:** the File System Access API (Chrome, Edge). The editor reads the folder once and writes every saved or generated file straight to it, as the server did. The folder's handle is kept in IndexedDB, so the next visit offers to reopen it; that needs a click to grant permission again.
+- **Local:** when `server.py` serves the editor for a paper (`python3 server.py paper.md`), in any browser. The editor reads the folder through `GET /local/files` and `/local/file/<path>`, and writes through `PUT /local/file/<path>`. The server only listens on 127.0.0.1, refuses other `Host` names (against DNS rebinding) and paths outside the folder, and uses `PUT` for writes, which another site's page can't send without CORS approval. The editor checks for `/local/paper` when it loads, so the same `docs/` works with or without `server.py`.
+- **Folder:** the File System Access API (Chrome, Edge). The editor reads the folder once and writes every saved or generated file straight to it. The folder's handle is kept in IndexedDB, so the next visit offers to reopen it; that needs a click to grant permission again.
 - **Browser:** for browsers without the File System Access API, or for papers not on disk. **Open files**, **Import folder** or drag-and-drop copies files into IndexedDB. **Paper** and **Zip** download the paper, or the folder with its generated files. Only one browser paper is kept at a time.
 - A paper in the URL (`?code=`, from "Copy as URL") opens as a browser paper.
 
@@ -99,12 +100,18 @@ js/heartdown-worker.js      (disk or IndexedDB)         │ GET paper/<session>/
 - The old fork is on the `heartdown-py3` branch.
 - The core changes are small: `Markdown` carries H❤️rtDown's state (`path`, `lib_py`, `json_data`, …), and preprocessors accept `path`.
 
-**The compiler is imported as `iheartla.*`.** `app.py` puts the `iheartla` submodule on `sys.path`, because the package now uses absolute imports. (It used to be imported through the repository layout as `iheartla.iheartla.*`.)
+**Dependencies are in `pyproject.toml`, managed with uv; the two submodules are editable path sources.**
+- `iheartla` and `markdown` are submodules in `deps/` and are listed in `[tool.uv.sources]` as editable paths. So they are imported as installed packages (`iheartla.*`, `markdown.*`), while edits to them take effect immediately and are committed in the submodule, as in this repository's history.
+- The alternative was git dependencies pinned to commits: a clone wouldn't need `--recursive`, but every change to the compiler or the fork would need a local path override that mustn't be committed. Both are changed often enough alongside H❤️rtDown to make that the worse trade. Switching later is a two-line change in `[tool.uv.sources]`.
+- The submodules are in `deps/`, not at the top level, because a `markdown/` directory next to `app.py` would shadow the installed `markdown` package.
+- (Before, `app.py` imported them through the repository layout, as `iheartla.iheartla.*` and `markdown.markdown.*`.)
+
+**`server.py` serves files; it doesn't compile.** It restores the old `python server.py paper.md` workflow for any browser, with only the standard library. Compiling natively on the server, as the old one did, would be faster and could use any installed package in figures. But it would give the editor a second compile path, with its own errors and caching, and it would no longer match the editor served from anywhere else.
 
 **Serve the preview with a service worker, not `srcdoc` or blob URLs.**
 - The generated HTML refers to files by relative paths, and so do `paper.js`, MathJax's `attr-label` loader, figure iframes and the paper's own HTML.
 - A service worker serves them all unchanged, with the editor's origin, so `paper.js`'s `parent.*` calls still work.
-- Service workers need `https://` or `http://localhost`, so the editor needs a web server. Any static server works.
+- Service workers need `https://` or `http://localhost`, so the editor needs a web server: `server.py`, or any static server.
 
 **Figures run inside Pyodide's interpreter.** Pyodide has no subprocesses or threads.
 - `run_figure_script` runs each script with `runpy` in the paper's folder.
@@ -119,5 +126,6 @@ js/heartdown-worker.js      (disk or IndexedDB)         │ GET paper/<session>/
 
 - **Eccentricity**, one of the gallery papers, doesn't compile with the newer compiler. A keyword followed by a letter (`π𝑑`) now lexes as one identifier, so `π𝑑(𝐿)` is an undefined symbol.
 - The generated `paper.html` still loads MathJax, Popper and Tippy from CDNs. The page is H❤️rtDown's output, not part of the editor, and is meant to be viewed online.
-- Opening a folder on disk works only in Chromium browsers. Other browsers use browser storage and downloads.
+- Without `server.py`, opening a folder on disk works only in Chromium browsers. Other browsers use browser storage and downloads.
+- The editor itself also loads MathJax from a CDN, so neither it nor the generated papers work fully offline.
 - A file written by a compile is detected by its modification time and size. A file rewritten in the same millisecond with the same size would be missed. The paper's outputs are always written during the compile, after the snapshot is taken.

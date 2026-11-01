@@ -13,3 +13,4 @@
 # pyinstaller creates these
 /build
 /dist
+*.egg-info/

@@ -105,7 +105,13 @@ async function onLoad(){
         showMsg("Couldn't start the service worker for the preview: " + e.message, true);
     }
     initDropTarget();
-    // A paper in the URL (from "Copy as URL") comes first, then the paper from last time
+    // The paper server.py serves comes first, then a paper in the URL (from "Copy as URL"),
+    // then the paper from last time
+    const local = await openLocalProject();
+    if (local) {
+        await setProject(local, false);
+        return;
+    }
     const code = new URL(window.location.href).searchParams.get("code");
     let restored = null;
     try {
@@ -188,6 +194,9 @@ function updateProjectInfo() {
     const info = document.getElementById("projectInfo");
     if (project === null) {
         info.textContent = "";
+    } else if (project.mode === "local") {
+        info.innerHTML = `<i class="fa fa-hdd-o"></i> ${escapeHtml(project.name)}/${escapeHtml(project.mdPath)}`;
+        info.title = "Saved in this folder on your computer, through server.py";
     } else if (project.mode === "folder") {
         info.innerHTML = `<i class="fa fa-folder-open"></i> ${escapeHtml(project.name)}/${escapeHtml(project.mdPath)}`;
         info.title = "Saved in this folder on your computer";
@@ -249,7 +258,7 @@ async function clickSave() {
     if (project === null) return;
     latestSource = ace.edit("editor").getValue();
     await project.write(project.mdPath, latestSource);
-    showMsg(project.mode === "folder" ? `Saved ${project.mdPath}` : `Saved ${project.mdPath} in this browser`);
+    showMsg(project.mode === "browser" ? `Saved ${project.mdPath} in this browser` : `Saved ${project.mdPath}`);
 }
 
 function clickDownloadPaper() {

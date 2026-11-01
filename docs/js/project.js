@@ -1,7 +1,9 @@
 // The open paper's folder: every file, in memory, by its path relative to the folder.
-// Two ways to keep it:
+// Three ways to keep it:
 //   - "folder": a folder on disk, opened with the File System Access API
-//     (Chromium). Writes go straight to disk, as with the old Python server.
+//     (Chromium). Writes go straight to disk.
+//   - "local": a folder on disk, through server.py, which serves the editor
+//     for one paper (any browser). Writes go to disk through the server.
 //   - "browser": IndexedDB. Files come in by opening or dropping them, and go
 //     out by downloading the paper or a zip of the folder.
 // Either way, the folder is served to the preview by sw.js (see serveFile) and
@@ -38,7 +40,7 @@ const decoder = new TextDecoder();
 
 class Project {
     constructor(mode, name, files, handle = null) {
-        this.mode = mode;          // "folder" or "browser"
+        this.mode = mode;          // "folder", "local" or "browser"
         this.name = name;          // folder name, for display
         this.files = files;        // Map: path -> Uint8Array
         this.handle = handle;      // FileSystemDirectoryHandle in folder mode
@@ -80,6 +82,9 @@ class Project {
         this.removed.delete(path);
         if (this.mode === "folder") {
             await writeToFolder(this.handle, path, bytes);
+        } else if (this.mode === "local") {
+            const response = await fetch(localFileURL(path), { method: "PUT", body: bytes });
+            if (!response.ok) throw new Error(`Couldn't save ${path}: ${response.status} ${response.statusText}`);
         } else {
             await idb("files", "readwrite", store => store.put(bytes, path));
         }
@@ -152,6 +157,31 @@ async function openFolderProject(handle = null) {
         return null;
     }
     return new Project("folder", handle.name, await readFolder(handle), handle);
+}
+
+function localFileURL(path) {
+    return "local/file/" + path.split("/").map(encodeURIComponent).join("/");
+}
+
+// The paper server.py was started with, or null if the editor isn't served by server.py
+async function openLocalProject() {
+    let info;
+    try {
+        const response = await fetch("local/paper", { cache: "no-store" });
+        if (!response.ok || !(response.headers.get("Content-Type") || "").includes("json")) return null;
+        info = await response.json();
+    } catch (e) {
+        return null;
+    }
+    const { files: paths } = await (await fetch("local/files", { cache: "no-store" })).json();
+    const files = new Map();
+    await Promise.all(paths.map(async (path) => {
+        const response = await fetch(localFileURL(path), { cache: "no-store" });
+        if (response.ok) files.set(path, new Uint8Array(await response.arrayBuffer()));
+    }));
+    const project = new Project("local", info.folder, files);
+    project.mdPath = info.paper;
+    return project;
 }
 
 // Files from an <input type=file> (multiple or a folder) or a drop, into a browser project

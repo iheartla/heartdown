@@ -2,71 +2,66 @@
 
 H❤️rtDown is an authoring environment for linear algebra papers. The papers compile to interactive web pages and code libraries that can be used inline to create figures or in external code.
 
-The code for the SIGGRAPH Asia 2022 paper is at the tag [`SIGGRAPH_Asia_2022`](https://github.com/iheartla/heartdown/tree/SIGGRAPH_Asia_2022) (`git checkout SIGGRAPH_Asia_2022`). That version's editor needs a local Python server; see the README there. The current version runs entirely in the browser.
+The code for the SIGGRAPH Asia 2022 paper is at the tag [`SIGGRAPH_Asia_2022`](https://github.com/iheartla/heartdown/tree/SIGGRAPH_Asia_2022) (`git checkout SIGGRAPH_Asia_2022`); see the README there. That version compiles papers with a local Python server. The current version compiles them in the browser.
 
 ## Running the editor
 
-The editor is a static web page in `docs/`. H❤️rtDown, the I❤️LA compiler and the Python code of figures run in the browser with [Pyodide](https://pyodide.org), so there is nothing to install.
+The editor is a web page in `docs/`. H❤️rtDown, the I❤️LA compiler and the Python code of figures run in the browser with [Pyodide](https://pyodide.org), so there is nothing to install besides Python 3 for the small local server.
 
-1. Get the code:
+Get the code:
 
-       git clone https://github.com/iheartla/heartdown.git
+    git clone https://github.com/iheartla/heartdown.git
+    cd heartdown
 
-   (Running the editor doesn't need the submodules; `docs/` has everything it needs.)
+(The editor doesn't need the submodules. `docs/` has everything it needs.)
 
-2. Serve `docs/` with any web server, for example:
+### On a paper on your computer
 
-       cd heartdown/docs
-       python3 -m http.server
+    python3 server.py path/to/paper.md
 
-3. Open <http://localhost:8000/> in a browser. Chrome or Edge is recommended, because only they can open a folder on your computer (see below).
+This opens the editor in your browser (any browser) on that paper. Compiling and saving (Ctrl/⌘-S) write the paper and everything it generates into the paper's folder. If the paper doesn't exist yet, it is created from an example. Options: `--port` (default 8000) and `--no-browser`. `server.py` only needs Python's standard library.
 
-The editor needs a web server, rather than opening `docs/index.html` as a file, because it uses a service worker to show the paper. Any `https://` host, such as GitHub Pages serving `docs/`, also works.
+### Without a server of your own
 
-The editor starts with a short example paper. Click **Compile** (Ctrl/⌘-R) to see it. Click an equation to edit its I❤️LA code, or a figure to edit the Python code that draws it.
+The editor also works from any web server that serves `docs/`, such as GitHub Pages or `cd docs && python3 -m http.server`. A plain file won't work, because the editor uses a service worker; opening `docs/index.html` directly fails. Served this way, the editor starts with an example paper, and you choose where papers are kept:
 
-### Papers and files
+- **Open folder** (Chrome and Edge) works on a paper's folder on your computer, reading and writing it directly. The editor offers to reopen the folder next time.
+- **Open files**, **Import folder** and drag-and-drop (any browser) copy a paper and its files into the browser's storage, where the editor keeps them. **Paper** downloads the `.md` file. **Zip** downloads the folder with everything it generated. **New** starts a new paper in the browser.
 
-A paper is a Markdown file (`.md`) in a folder, next to the files it uses: a `.bib` file, imported `.ihla` modules and images. Compiling writes the paper's outputs into its folder:
+### Using the editor
 
-- `<paper>.html`: the interactive paper. It needs the `heartdown-resource/` folder and the paper's images next to it.
+Click **Compile** (Ctrl/⌘-R) to compile the paper and show it. Click an equation to edit its I❤️LA code, or a figure to edit the Python code that draws it.
+
+A paper is a Markdown file (`.md`) in a folder, next to the files it uses: a `.bib` file, imported `.ihla` modules and images. Compiling writes into the paper's folder:
+
+- `<paper>.html`: the interactive paper. It needs `heartdown-resource/` and the paper's images next to it.
 - `output_code/lib.py`, `lib.h`, `lib.m`: the paper's code in NumPy, C++/Eigen and MATLAB.
 - The figures, and each figure's code (`<figure>.py`).
-
-You can keep a paper in either of two places:
-
-- **Open folder** (Chrome and Edge) works on a paper's folder on your computer. Compiling and saving (Ctrl/⌘-S) write the paper and its outputs to that folder. The editor offers to reopen the folder next time.
-- **Open files**, **Import folder** and drag-and-drop (any browser) copy a paper and its files into the browser's storage, where the editor keeps them. **Paper** downloads the `.md` file. **Zip** downloads the folder with all its outputs. **New** starts a new paper in the browser.
 
 The first compile of a paper with figure code takes a few seconds longer, because it loads NumPy, SciPy and Matplotlib. If figure code imports other packages that Pyodide provides, such as scikit-image, they load from the Pyodide CDN, which needs a network connection.
 
 ## Compiling from the command line
 
-The command line needs Python and the submodules:
+The command line needs the submodules and [uv](https://docs.astral.sh/uv/):
 
     git clone --recursive https://github.com/iheartla/heartdown.git
     cd heartdown
+    uv run heartdown --paper path/to/paper.md
 
-(In an existing clone, run `git submodule update --init` instead.)
-
-Install the dependencies. With [Anaconda](https://www.anaconda.com/products/individual) or [Miniconda](https://docs.conda.io/en/latest/miniconda.html):
-
-    conda env create -f environment-heartdown.yml
-    conda activate heartdown
-
-To update the environment when `environment-heartdown.yml` changes, run `conda env update --file environment-heartdown.yml --prune`.
-
-Then compile a paper:
-
-    python app.py --paper path/to/paper.md
-
-This writes `path/to/paper.html`, `output_code/` and the figures next to the paper, as the editor does.
+In an existing clone, run `git submodule update --init` first. The first `uv run` creates a virtual environment (`.venv/`) with the dependencies from `pyproject.toml`. The command writes `path/to/paper.html`, `output_code/` and the figures next to the paper, as the editor does. Figure code runs with this environment's Python, so add any packages it needs with `uv add`.
 
 ## Developing
 
 [Architecture.md](Architecture.md) describes how H❤️rtDown and the editor work.
 
-`docs/` holds copies of the Python code and of Pyodide. After changing `app.py`, or the `markdown` or `iheartla` submodules, rebuild the copy of the Python code:
+The submodules in `deps/` are H❤️rtDown's two main dependencies, and uv installs them from there in editable mode:
+
+- `deps/iheartla`: the I❤️LA compiler, on its `mesh` branch.
+- `deps/markdown`: H❤️rtDown's fork of Python-Markdown, on its `heartdown` branch.
+
+Changes to either take effect immediately. Commit them in the submodule, then commit the submodule's new version here.
+
+`docs/` holds copies of the Python code and of Pyodide. After changing `app.py` or a submodule, rebuild the copy of the Python code:
 
     sh docs/update_python.sh     # writes docs/heartdown-py.zip
 

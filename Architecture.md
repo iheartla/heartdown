@@ -91,7 +91,7 @@ js/heartdown-worker.js      (disk or IndexedDB)         │ GET paper/<session>/
 
 **The `iheartla` submodule tracks the `mesh` branch.**
 - Its Python compiler is identical to the `rust` branch's (`rust` adds the Rust compiler), and it is the branch where the Python compiler is developed.
-- The newer compiler broke 6 of the 14 gallery papers. The fixes are committed on `mesh` (see its log): sum scopes in the equation data, `.ihla` module lookup, empty names, multiple imports from one package, subscripted function parameters, and symbol keywords such as `π` beginning a name (`π𝑑` is π times 𝑑). Three bugs in the generated code are fixed there too: function parameters called in local functions, parameters mistaken for another local function's, and misplaced comments.
+- The newer compiler broke 6 of the 14 gallery papers. The fixes are committed on `mesh` (see its log): sum scopes in the equation data, `.ihla` module lookup, empty names, multiple imports from one package, symbol keywords such as `π` beginning a name (`π𝑑` is π times 𝑑), and subscripted function parameters. A parameter `D_i: ℝ^3 -> ℝ` is now a function of its subscript too (`D_i(u_i)` calls `D(i, u_i)`), as subscripted local functions already were; sequences of functions are no longer in the language. Three bugs in the generated code are fixed there too: function parameters called in local functions, parameters mistaken for another local function's, and misplaced comments.
 
 **The `markdown` submodule is H❤️rtDown's fork, rebased onto upstream Python-Markdown 3.11.2.**
 - The fork was Python-Markdown 3.3.4 plus about 170 H❤️rtDown commits. Its `heartdown` branch replays those commits onto 3.11.2 and ports the extensions to the 3.4+ API.
@@ -124,7 +124,6 @@ js/heartdown-worker.js      (disk or IndexedDB)         │ GET paper/<session>/
 
 ## Limitations
 
-- **Soft_segmentation**, one of the gallery papers, uses `D_i`, a different function for each layer. The compiler no longer supports sequences of functions: `D_i` becomes one function, called with `u_i` but not `i`.
 - The generated `paper.html` still loads MathJax, Popper and Tippy from CDNs. The page is H❤️rtDown's output, not part of the editor, and is meant to be viewed online.
 - Without `server.py`, opening a folder on disk works only in Chromium browsers. Other browsers use browser storage and downloads.
 - The editor itself also loads MathJax from a CDN, so neither it nor the generated papers work fully offline.

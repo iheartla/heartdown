@@ -428,7 +428,6 @@ function onEditEquation(raw_text){
     let equation = ace.edit("equation");
     equation.setValue(preEqCode, 1);
     $('#eqEditor').modal('show');
-    equation.session.on('change', onEditIhla);
 }
 
 async function clickCompile(){
@@ -622,26 +621,37 @@ function activateBtnStatus(){
     setBtnTitle("Compile");
 }
 
-function onEditIhla(e){
+// A change in an editor (ace's change event). delta: the change
+function onEditIhla(editor, delta){
     hideMsg();
     removeMarkers();
-    let editor = ace.edit("editor");
-    substitute(editor);
-    let equation = ace.edit("equation");
-    substitute(equation);
+    substitute(editor, delta);
 }
 
-function substitute(editor){
-    for (let key in unicode_dict) {
-        let old_str = '\\' + key + ' ';
-        let result = editor.find(old_str);
-        if (result){
-            editor.replaceAll(unicode_dict[key]);
-            editor.gotoLine(result.start.row+1, result.start.column+unicode_dict[key].length)
+// Typing a shortcut and a space (\alpha ) replaces them with the symbol (α). Only what was just
+// typed: the paper's own LaTeX ($\lambda \cdot x$) and loaded text are left alone.
+function substitute(editor, delta){
+    if (delta.action !== "insert" || delta.lines.length !== 1 || delta.lines[0] !== " ") return;
+    const row = delta.end.row;
+    const before = editor.session.getLine(row).slice(0, delta.end.column);
+    const m = before.match(/\\([^\\\s]+) $/);
+    if (!m || !(m[1] in unicode_dict)) return;
+    // After ace finishes this change. Edits may come first (fast typing, another shortcut), so an
+    // anchor follows the shortcut's position, and it's replaced only if it's still there.
+    const start = editor.session.doc.createAnchor(row, delta.end.column - m[0].length);
+    setTimeout(() => {
+        const Range = ace.require("ace/range").Range;
+        const at = start.getPosition();
+        start.detach();
+        const range = new Range(at.row, at.column, at.row, at.column + m[0].length);
+        if (editor.session.getTextRange(range) !== m[0]) return;
+        const cursor = editor.getCursorPosition();
+        const end = editor.session.replace(range, unicode_dict[m[1]]);
+        if (cursor.row === at.row && cursor.column === at.column + m[0].length) {
+            editor.moveCursorToPosition(end);
             editor.clearSelection();
-            break;
         }
-    }
+    }, 0);
 }
 
 function captureHotKeys() {

@@ -181,7 +181,7 @@
     // editor.setTheme("ace/theme/chaos");
     editor.setTheme("ace/theme/chalkboard");
     editor.session.setMode("ace/mode/markdown");
-    editor.session.on('change', onEditIhla);
+    editor.session.on('change', (delta) => onEditIhla(editor, delta));
     editor.getSession().setUseWrapMode(true);
     editor.setOptions({
         enableBasicAutocompletion: true,
@@ -194,7 +194,7 @@
     let equation = ace.edit("equation");
     equation.setTheme("ace/theme/chalkboard");
     equation.session.setMode("ace/mode/iheartla");
-    equation.session.on('change', onEditIhla);
+    equation.session.on('change', (delta) => onEditIhla(equation, delta));
     equation.getSession().setUseWrapMode(true);
     equation.setOptions({
         enableBasicAutocompletion: true,

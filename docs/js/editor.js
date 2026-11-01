@@ -229,14 +229,15 @@ function forgetLink() {
     history.replaceState(null, "", url);
 }
 
-// Open the paper (.md or .txt) or zip of a paper's folder at url
-async function openPaperURL(url, fallback = null) {
+// Open the paper (.md or .txt) or zip of a paper's folder at url.
+// loaded: the message once it's open (HTML), if not the warning for papers from anywhere
+async function openPaperURL(url, fallback = null, loaded = null) {
     showMsg(`Loading ${escapeHtml(url)}…`, false, true);
     try {
         await setProject(await openURLProject(url));
         forgetLink();
         // Its figure code runs in this page when it's compiled
-        showMsg(`Loaded ${escapeHtml(url)}. Compiling runs the paper's figure code in your browser, so compile only papers you trust.`,
+        showMsg(loaded || `Loaded ${escapeHtml(url)}. Compiling runs the paper's figure code in your browser, so compile only papers you trust.`,
                 false, true);
     } catch (e) {
         if (project === null) {
@@ -246,6 +247,49 @@ async function openPaperURL(url, fallback = null) {
         // (after setProject, which clears messages)
         showMsg(escapeHtml(e.message), true);
     }
+}
+
+let demos = null;  // examples/demos.json: the gallery's case studies
+
+async function clickDemos() {
+    if (demos === null) {
+        try {
+            demos = await (await fetch("examples/demos.json")).json();
+        } catch (e) {
+            showMsg("Couldn't load the list of demos: " + escapeHtml(e.message), true);
+            return;
+        }
+        showDemos();
+    }
+    bootstrap.Modal.getOrCreateInstance(document.getElementById("demos")).show();
+}
+
+function showDemos() {
+    const list = document.getElementById("demoList");
+    document.getElementById("demoGallery").href = demos.gallery;
+    for (const group of demos.groups) {
+        const heading = document.createElement("h6");
+        heading.className = "mt-2";
+        heading.textContent = group.title;
+        const items = document.createElement("div");
+        items.className = "list-group mb-3";
+        for (const demo of group.demos) {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "list-group-item list-group-item-action";
+            button.textContent = demo.title;
+            button.onclick = () => openDemo(demo);
+            items.appendChild(button);
+        }
+        list.append(heading, items);
+    }
+}
+
+async function openDemo(demo) {
+    bootstrap.Modal.getOrCreateInstance(document.getElementById("demos")).hide();
+    if (!confirmReplaceBrowserProject()) return;
+    await openPaperURL(new URL(demo.paper, demos.base).href, null,
+                       `Loaded the demo “${escapeHtml(demo.title)}”. Click Compile to see it.`);
 }
 
 async function clickOpenURL() {

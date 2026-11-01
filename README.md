@@ -27,6 +27,7 @@ The editor also works from any web server that serves `docs/`, such as GitHub Pa
 
 - **Open folder** (Chrome and Edge) works on a paper's folder on your computer, reading and writing it directly. The editor offers to reopen the folder next time.
 - **Open files**, **Import folder** and drag-and-drop (any browser) copy a paper and its files into the browser's storage, where the editor keeps them. **Paper** downloads the `.md` file. **Zip** downloads the folder with everything it generated. **New** starts a new paper in the browser.
+- **Demos** opens one of the case studies from the [H❤️rtDown gallery](https://iheartla.github.io/heartdown/CaseStudies/gallery/index.html) (listed in `docs/examples/demos.json`).
 - **Open URL**, or a link to the editor with `?paper=<url>`, opens a paper on the web into the browser's storage. The URL can be:
   - a paper (`.md` or `.txt`): the editor also fetches its `.bib` and the files it refers to (such as `<img src="./img/fig1.png">`), relative to the paper's URL;
   - a zip of the paper's folder.

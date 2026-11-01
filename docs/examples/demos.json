@@ -1,0 +1,73 @@
+{
+  "_comment": "The case studies of the H❤️rtDown gallery, for the editor's Demos menu. Paper paths are relative to base.",
+  "gallery": "https://iheartla.github.io/heartdown/CaseStudies/gallery/index.html",
+  "base": "https://iheartla.github.io/heartdown/CaseStudies/static/gallery_res/",
+  "groups": [
+    {
+      "title": "Entire papers",
+      "demos": [
+        {
+          "title": "An Omnistereoscopic Video Pipeline for Capture and Display of Real-World VR",
+          "paper": "Pipeline/pipeline.txt"
+        },
+        {
+          "title": "A Luminance-aware Model of Judder Perception",
+          "paper": "Judder/judder.txt"
+        },
+        {
+          "title": "A Perceptual Model for Eccentricity-dependent Spatio-temporal Flicker Fusion and its Applications to Foveated Graphics",
+          "paper": "Eccentricity/eccentricity.txt"
+        },
+        {
+          "title": "A Symmetric Objective Function for ICP",
+          "paper": "ICP/icp.txt"
+        },
+        {
+          "title": "Regularized Kelvinlets Sculpting Brushes based on Fundamental Solutions of Elasticity",
+          "paper": "Regularized/Regularized.txt"
+        }
+      ]
+    },
+    {
+      "title": "Paper sections",
+      "demos": [
+        {
+          "title": "Stable Neo-Hookean Flesh Simulation",
+          "paper": "Stable/Stable.txt"
+        },
+        {
+          "title": "A perceptual model of motion quality for rendering with adaptive refresh-rate and resolution",
+          "paper": "a_perceptual_model/perceptual.txt"
+        },
+        {
+          "title": "Anisotropic Elasticity for Inversion-Safety and Element Rehabilitation",
+          "paper": "Anisotropic/Anisotropic.txt"
+        },
+        {
+          "title": "On Elastic Geodesic Grids and Their Planar to Spatial Deployment",
+          "paper": "Elastic/elastic.txt"
+        },
+        {
+          "title": "Nautilus-Recovering Regional Symmetry Transformations for Image Editing",
+          "paper": "Nautilus/nautilus.txt"
+        },
+        {
+          "title": "Computational Design of Transforming Pop-up Books",
+          "paper": "Computational_Design/computation.txt"
+        },
+        {
+          "title": "Unmixing-Based Soft Color Segmentation for Image Manipulation",
+          "paper": "Soft_segmentation/Soft.txt"
+        },
+        {
+          "title": "Generic Objective Vortices for Flow Visualization",
+          "paper": "Generic/Generic.txt"
+        },
+        {
+          "title": "SIERE: a hybrid semi-implicit exponential integrator for efficiently simulating stiff deformable objects",
+          "paper": "SIERE/siere.txt"
+        }
+      ]
+    }
+  ]
+}

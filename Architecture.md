@@ -70,6 +70,7 @@ js/heartdown-worker.js      (disk or IndexedDB)         │ GET paper/<session>/
   - For a `.md` or `.txt`, the editor fetches the paper, its `.bib`, and the relative files it refers to (`src`, `href`, Markdown links), relative to its URL. It remembers that URL, so the preview fetches anything else it asks for from there on first use; in sw.js terms, a file missing from the folder.
   - For a zip (detected by its contents, not its name), it unzips the folder (`DecompressionStream`).
   - The parameter is then removed from the address bar, so a reload restores the browser paper with its edits rather than loading the link again.
+  - **Demos** lists the gallery's case studies (`docs/examples/demos.json`) and opens one as a `?paper=` link to its `.txt` on the gallery site.
   - Opening a paper replaces the browser paper. The editor asks first only if that paper was edited since it was created or loaded (`Project.edited`, kept with it): an untouched example, a paper from a link, or opened files are easy to get back.
   - Compiling runs the paper's figure code in the page's origin, so the editor says to compile only papers you trust. Messages escape text from papers and URLs.
 

@@ -36,6 +36,7 @@
             <h1 style="margin-top: 1ex;">H❤️rtDown Editor</h1>
         </div>
         <div class="col toolbar">
+            <button class="btn btn-outline-primary btn-sm" onclick="clickDemos()" title="Open one of the case studies from the H❤️rtDown gallery"><i class="fa fa-th-large"></i> Demos</button>
             <button id="openFolder" class="btn btn-outline-secondary btn-sm" onclick="clickOpenFolder()" title="Open a paper's folder on your computer. Compiling saves the paper and the generated files there." hidden><i class="fa fa-folder-open"></i> Open folder</button>
             <button id="reopenFolder" class="btn btn-outline-secondary btn-sm" onclick="clickReopenFolder()" hidden></button>
             <label class="btn btn-outline-secondary btn-sm mb-0" title="Open a paper and the files it uses (.bib, .ihla, images) into this browser"><i class="fa fa-file-o"></i> Open files
@@ -140,6 +141,22 @@
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" onclick="onCancelUpdatePython()">Cancel</button>
         <button type="button" class="btn btn-primary" onclick="onUpdatePython()">Update</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- The gallery's case studies -->
+<div class="modal fade" id="demos" tabindex="-1" aria-labelledby="demosLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="demosLabel">Demos: case studies from the H❤️rtDown gallery</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="demoList"></div>
+      <div class="modal-footer small text-muted">
+        <span>Each case study opens in this editor, from <a id="demoGallery" target="_blank" rel="noopener">the gallery</a>.</span>
       </div>
     </div>
   </div>

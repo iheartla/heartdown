@@ -11,9 +11,11 @@ import regex as re
 from textwrap import dedent
 import subprocess
 import sys
-from iheartla.iheartla.la_tools.la_helper import *
-from iheartla.iheartla.la_tools.la_logger import LaLogger
-from iheartla.iheartla.la_parser.parser import ParserTypeEnum, LaMsg
+# The I❤️LA compiler is the package in the iheartla submodule
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'iheartla'))
+from iheartla.la_tools.la_helper import *
+from iheartla.la_tools.la_logger import LaLogger
+from iheartla.la_parser.parser import ParserTypeEnum, LaMsg
 import markdown.markdown
 import markdown.markdown.extensions
 from markdown.markdown.core import *
@@ -31,6 +33,41 @@ IMAGE_BLOCK_RE = re.compile(
 )
 cached_figure_dict = {}
 cached_figure_code = {}
+# In Pyodide (the browser), there are no subprocesses or threads
+IN_BROWSER = sys.platform == 'emscripten'
+APP_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
+def run_figure_script(source, cwd):
+    """
+    Run a figure's Python script in cwd
+    :return: (succeeded, error message)
+    """
+    if not IN_BROWSER:
+        ret = subprocess.run([sys.executable, source], cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        return ret.returncode == 0, ret.stderr.decode('UTF-8')
+    # Run it in this interpreter, as a fresh __main__ that imports the current lib.py
+    import runpy
+    import traceback
+    old_cwd = os.getcwd()
+    os.chdir(cwd)
+    sys.path.insert(0, cwd)
+    sys.modules.pop('lib', None)
+    try:
+        runpy.run_path(source, run_name='__main__')
+        return True, ''
+    except SystemExit as e:
+        if e.code in (None, 0):
+            return True, ''
+        return False, traceback.format_exc()
+    except BaseException:
+        return False, traceback.format_exc()
+    finally:
+        if 'matplotlib.pyplot' in sys.modules:
+            sys.modules['matplotlib.pyplot'].close('all')
+        sys.path.remove(cwd)
+        os.chdir(old_cwd)
+
 def handle_title(text, dict):
     content = ''
     if "title" in dict:
@@ -163,15 +200,13 @@ def gen_figure(source, name, input_dir, figure_dict, figure_code, lib_changed):
             if name in cached_figure_dict:
                 figure_dict[name] = cached_figure_dict[name]
             return
-    ret = subprocess.run(["python", source], cwd="{}/{}".format(input_dir, IMG_CODE), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    succeeded, err = run_figure_script(source, "{}/{}".format(input_dir, IMG_CODE))
     record("figure")
-    if ret.returncode == 0:
+    if succeeded:
         figure_code[cur_hash] = True
-        pass
     else:
         figure_code[cur_hash] = False
-        # print(ret.stderr.decode('UTF-8'))
-        figure_dict[name] = ret.stderr.decode('UTF-8')
+        figure_dict[name] = err
         print("failed, {}".format(source))
 
 
@@ -221,8 +256,11 @@ def handle_figure(text, name_list, input_dir, md):
     if len(text_list) > 0:
         if len(threads_list) > 0:
             # print("generating figures ...")
-            [t.start() for t in threads_list]
-            [t.join() for t in threads_list]
+            if IN_BROWSER:
+                [t.run() for t in threads_list]
+            else:
+                [t.start() for t in threads_list]
+                [t.join() for t in threads_list]
         record("handle_figure")
         global cached_figure_dict, cached_figure_code
         cached_figure_dict = copy.deepcopy(figure_dict)
@@ -301,7 +339,7 @@ def process_input(content, input_dir='.', resource_dir='.', file_name='result',
         sym_json = md.json_sym
         dst = "{}/heartdown-resource".format(input_dir)
         if not os.path.exists(dst):
-            shutil.copytree("./extras/heartdown-resource", dst)
+            shutil.copytree(os.path.join(APP_DIR, "extras", "heartdown-resource"), dst)
         script = r"""window.onload = onLoad;
         function reportWindowSize() {
           var arrows = document.querySelectorAll(".arrow");
@@ -395,6 +433,43 @@ def process_input(content, input_dir='.', resource_dir='.', file_name='result',
     #     ret = str(sys.exc_info()[0])
     # finally:
         return ret, figure_dict
+
+
+def compile_paper(content, input_dir, file_name):
+    """
+    Compile a paper and report errors instead of raising them (for the editor)
+    :return: dict with "ret" (0 on success), "res" ([html, lib_py, lib_cpp, lib_matlab]), "fig" (figure name: error),
+             or "msg" and "expr" (the I❤️LA code with the error)
+    """
+    result = {"ret": 1, "name": file_name}
+    figure_dict = {}
+    try:
+        res, figure_dict = process_input(content, input_dir, file_name=file_name, server_mode=True)
+        result["ret"] = 0
+        result["res"] = res
+    except AssertionError as e:
+        err_msg = LaMsg.getInstance()
+        result["expr"] = err_msg.cur_code.replace('\n', '')
+        result["msg"] = err_msg.cur_msg if err_msg.cur_msg else str(e)
+    except Exception as e:
+        result["msg"] = "{}: {}".format(type(e).__name__, str(e))
+    if len(figure_dict) > 0:
+        result["fig"] = figure_dict
+    return result
+
+
+def run_figure(name, source, input_dir):
+    """
+    Save and run the code of one figure, as edited in the editor, with the paper's current lib.py
+    :return: (succeeded, error message)
+    """
+    folder = "{}/{}".format(input_dir, IMG_CODE)
+    lib = "{}/{}/lib.py".format(input_dir, OUTPUT_CODE)
+    if os.path.exists(lib):
+        shutil.copyfile(lib, "{}/lib.py".format(folder))
+    script = "{}/{}.py".format(folder, name)
+    save_to_file(source, script)
+    return run_figure_script(script, folder)
 
 
 if __name__ == '__main__':

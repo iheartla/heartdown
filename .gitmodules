@@ -1,6 +1,8 @@
 [submodule "iheartla"]
-	path = iheartla
+	path = deps/iheartla
 	url = https://github.com/iheartla/iheartla.git
+	branch = mesh
 [submodule "markdown"]
-	path = markdown
+	path = deps/markdown
 	url = https://github.com/iheartla/markdown.git
+	branch = heartdown

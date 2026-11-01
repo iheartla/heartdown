@@ -11,14 +11,12 @@ import regex as re
 from textwrap import dedent
 import subprocess
 import sys
-# The I❤️LA compiler is the package in the iheartla submodule
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'iheartla'))
 from iheartla.la_tools.la_helper import *
 from iheartla.la_tools.la_logger import LaLogger
 from iheartla.la_parser.parser import ParserTypeEnum, LaMsg
-import markdown.markdown
-import markdown.markdown.extensions
-from markdown.markdown.core import *
+import markdown
+import markdown.extensions
+from markdown.core import *
 
 
 # Match string: <figure>***</figure>
@@ -299,26 +297,26 @@ def process_input(content, input_dir='.', resource_dir='.', file_name='result',
     record()
     if True:
     # try:
-        extension_list = ['markdown.markdown.extensions.mdx_bib', \
-                           'markdown.markdown.extensions.iheartla_code', \
-                           'markdown.markdown.extensions.mdx_math', \
-                           'markdown.markdown.extensions.attr_list', \
-                           'markdown.markdown.extensions.fenced_code', \
-                           'markdown.markdown.extensions.abbr', \
-                           'markdown.markdown.extensions.def_list', \
-                           'markdown.markdown.extensions.footnotes', \
-                           'markdown.markdown.extensions.md_in_html', \
-                           'markdown.markdown.extensions.tables', \
-                           'markdown.markdown.extensions.admonition', \
+        extension_list = ['markdown.extensions.mdx_bib', \
+                           'markdown.extensions.iheartla_code', \
+                           'markdown.extensions.mdx_math', \
+                           'markdown.extensions.attr_list', \
+                           'markdown.extensions.fenced_code', \
+                           'markdown.extensions.abbr', \
+                           'markdown.extensions.def_list', \
+                           'markdown.extensions.footnotes', \
+                           'markdown.extensions.md_in_html', \
+                           'markdown.extensions.tables', \
+                           'markdown.extensions.admonition', \
                            # 'markdown.extensions.codehilite', \
-                           'markdown.markdown.extensions.legacy_attrs', \
-                           'markdown.markdown.extensions.legacy_em', \
-                           'markdown.markdown.extensions.meta', \
-                           'markdown.markdown.extensions.nl2br', \
-                           'markdown.markdown.extensions.sane_lists', \
-                           'markdown.markdown.extensions.smarty', \
-                           'markdown.markdown.extensions.toc', \
-                           'markdown.markdown.extensions.wikilinks']
+                           'markdown.extensions.legacy_attrs', \
+                           'markdown.extensions.legacy_em', \
+                           'markdown.extensions.meta', \
+                           'markdown.extensions.nl2br', \
+                           'markdown.extensions.sane_lists', \
+                           'markdown.extensions.smarty', \
+                           'markdown.extensions.toc', \
+                           'markdown.extensions.wikilinks']
         md = Markdown(extensions=extension_list,
                                path=input_dir,
                                parser_type=parser_type,
@@ -472,7 +470,7 @@ def run_figure(name, source, input_dir):
     return run_figure_script(script, folder)
 
 
-if __name__ == '__main__':
+def main():
     # LaLogger.getInstance().set_level(logging.DEBUG if DEBUG_MODE else logging.ERROR)
     LaLogger.getInstance().set_level(logging.ERROR)
     arg_parser = argparse.ArgumentParser(description='HeartDown paper compiler')
@@ -504,10 +502,10 @@ if __name__ == '__main__':
             content = read_from_file(paper_file)
             base_name = os.path.basename(Path(paper_file))
             if DEBUG_MODE:
-                ret, figure_dict = process_input(content, os.path.dirname(Path(paper_file)), resource_dir, os.path.splitext(base_name)[0], parser_type)
+                ret, figure_dict = process_input(content, os.path.dirname(os.path.abspath(paper_file)), resource_dir, os.path.splitext(base_name)[0], parser_type)
             else:
                 try:
-                    ret, figure_dict = process_input(content, os.path.dirname(Path(paper_file)), resource_dir, os.path.splitext(base_name)[0], parser_type)
+                    ret, figure_dict = process_input(content, os.path.dirname(os.path.abspath(paper_file)), resource_dir, os.path.splitext(base_name)[0], parser_type)
                     msg = ''
                 except AssertionError as e:
                     err_msg = LaMsg.getInstance()
@@ -522,3 +520,7 @@ if __name__ == '__main__':
                     # print("msg: {}".format(msg))
             # print(html)
     record("End")
+
+
+if __name__ == '__main__':
+    main()

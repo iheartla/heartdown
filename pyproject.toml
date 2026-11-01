@@ -1,0 +1,35 @@
+[project]
+name = "heartdown"
+version = "0.1.0"
+description = "H❤️rtDown: document processor for executable linear algebra papers"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
+dependencies = [
+    # the I❤️LA compiler and H❤️rtDown's fork of Python-Markdown (submodules in deps/; see [tool.uv.sources])
+    "iheartla",
+    "markdown",
+    "pybtex",
+    "pyyaml",
+    # for figure code and the generated lib.py
+    "numpy",
+    "scipy",
+    "matplotlib",
+]
+
+[project.scripts]
+heartdown = "app:main"
+
+[project.urls]
+Homepage = "https://github.com/iheartla/heartdown"
+
+[tool.uv.sources]
+iheartla = { path = "deps/iheartla", editable = true }
+markdown = { path = "deps/markdown", editable = true }
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = ["app"]

@@ -1,7 +1,8 @@
 # Bundle H❤️rtDown's Python code for the in-browser editor into docs/heartdown-py.zip:
-# app.py, the Markdown fork, the I❤️LA compiler (iheartla submodule) and
-# extras/heartdown-resource, laid out as in this repository. The editor's
-# Pyodide worker (docs/js/heartdown-worker.js) unpacks it and imports app.py.
+# app.py and extras/heartdown-resource, and the packages from the submodules,
+# iheartla/ (the I❤️LA compiler) and markdown/ (H❤️rtDown's fork of
+# Python-Markdown), at the top level as if installed. The editor's Pyodide
+# worker (docs/js/heartdown-worker.js) unpacks it and imports app.py.
 # Run it after changing any of them (or updating the submodules).
 # Usage: sh docs/update_python.sh
 set -e
@@ -9,18 +10,19 @@ cd "$(dirname "$0")/.."
 python3 - <<'PY'
 import os, zipfile
 SKIP_DIRS = {"__pycache__", "la_gui", "tests", "test"}
-def add_tree(z, root, keep):
-    for dirpath, dirnames, filenames in os.walk(root):
+def add_tree(z, root, keep, prefix=""):
+    # prefix: the directory in the repository that root is in, left out of the zip
+    for dirpath, dirnames, filenames in os.walk(os.path.join(prefix, root)):
         dirnames[:] = sorted(d for d in dirnames if d not in SKIP_DIRS and not d.startswith("."))
         for f in sorted(filenames):
             if keep(f):
-                z.write(os.path.join(dirpath, f))
+                path = os.path.join(dirpath, f)
+                z.write(path, os.path.relpath(path, prefix or "."))
 with zipfile.ZipFile("docs/heartdown-py.zip", "w", zipfile.ZIP_DEFLATED) as z:
     z.write("app.py")
-    z.write("markdown/__init__.py")
-    add_tree(z, "markdown/markdown", lambda f: f.endswith(".py"))
+    add_tree(z, "markdown", lambda f: f.endswith(".py"), "deps/markdown")
     # the compiler, with its bundled I❤️MESH modules (.hlang)
-    add_tree(z, "iheartla/iheartla", lambda f: f.endswith((".py", ".hlang")))
+    add_tree(z, "iheartla", lambda f: f.endswith((".py", ".hlang")), "deps/iheartla")
     add_tree(z, "extras/heartdown-resource", lambda f: not f.startswith("."))
 PY
 du -h docs/heartdown-py.zip

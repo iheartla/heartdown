@@ -27,6 +27,11 @@ The editor also works from any web server that serves `docs/`, such as GitHub Pa
 
 - **Open folder** (Chrome and Edge) works on a paper's folder on your computer, reading and writing it directly. The editor offers to reopen the folder next time.
 - **Open files**, **Import folder** and drag-and-drop (any browser) copy a paper and its files into the browser's storage, where the editor keeps them. **Paper** downloads the `.md` file. **Zip** downloads the folder with everything it generated. **New** starts a new paper in the browser.
+- **Open URL**, or a link to the editor with `?paper=<url>`, opens a paper on the web into the browser's storage. The URL can be:
+  - a paper (`.md` or `.txt`): the editor also fetches its `.bib` and the files it refers to (such as `<img src="./img/fig1.png">`), relative to the paper's URL;
+  - a zip of the paper's folder.
+
+  For example, `https://<editor>/?paper=https://iheartla.github.io/heartdown/CaseStudies/static/gallery_res/Judder/judder.txt`. The paper's server must allow other sites to load it (CORS), as GitHub Pages does. Compiling a paper runs its figure code in your browser, so compile only papers you trust.
 
 ### Using the editor
 
@@ -38,6 +43,8 @@ A paper is a Markdown file (`.md`) in a folder, next to the files it uses: a `.b
 - `output_code/lib.py`, `lib.h`, `lib.m`: the paper's code in NumPy, C++/Eigen and MATLAB.
 - The figures, and each figure's code (`<figure>.py`).
 
+**Code** downloads the generated code (`lib.py`, `lib.h` or `lib.m`, or all three), the same code the command line generates.
+
 The first compile of a paper with figure code takes a few seconds longer, because it loads NumPy, SciPy and Matplotlib. If figure code imports other packages that Pyodide provides, such as scikit-image, they load from the Pyodide CDN, which needs a network connection.
 
 ## Compiling from the command line
@@ -48,7 +55,17 @@ The command line needs the submodules and [uv](https://docs.astral.sh/uv/):
     cd heartdown
     uv run heartdown --paper path/to/paper.md
 
-In an existing clone, run `git submodule update --init` first. The first `uv run` creates a virtual environment (`.venv/`) with the dependencies from `pyproject.toml`. The command writes `path/to/paper.html`, `output_code/` and the figures next to the paper, as the editor does. Figure code runs with this environment's Python, so add any packages it needs with `uv add`.
+In an existing clone, run `git submodule update --init` first. The first `uv run` creates a virtual environment (`.venv/`) with the dependencies from `pyproject.toml`. The command writes next to the paper, as the editor does:
+
+- `path/to/paper.html`, the interactive paper, with `heartdown-resource/` (its scripts and styles) next to it;
+- `output_code/`, the paper's code;
+- the figures.
+
+The paper can be a `.md` or `.txt` file, and `--paper` takes several. To share one `heartdown-resource/` among several papers, as the gallery does, give its location relative to the papers with `--resource_dir`. For example, for `gallery_res/Judder/judder.txt`:
+
+    uv run heartdown --paper gallery_res/Judder/judder.txt --resource_dir ..
+
+writes `gallery_res/Judder/judder.html`, which loads `gallery_res/heartdown-resource/`. Figure code runs with this environment's Python, so add any packages it needs with `uv add`.
 
 ## Developing
 

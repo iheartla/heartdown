@@ -56,7 +56,7 @@ function startWorker() {
             if (data.ready) {
                 activateBtnStatus();
             } else {
-                showMsg(data.error, true);
+                showMsg(escapeHtml(data.error), true);
                 setBtnTitle("Failed to load");
             }
         } else if (data.status !== undefined) {
@@ -102,35 +102,38 @@ async function onLoad(){
         await navigator.serviceWorker.register("./sw.js");
         await navigator.serviceWorker.ready;
     } catch (e) {
-        showMsg("Couldn't start the service worker for the preview: " + e.message, true);
+        showMsg("Couldn't start the service worker for the preview: " + escapeHtml(e.message), true);
     }
     initDropTarget();
-    // The paper server.py serves comes first, then a paper in the URL (from "Copy as URL"),
-    // then the paper from last time
+    // The paper server.py serves comes first, then a paper in the link (?paper=<url>, or ?code=
+    // from "Copy as URL"), then the paper from last time
     const local = await openLocalProject();
     if (local) {
         await setProject(local, false);
         return;
     }
-    const code = new URL(window.location.href).searchParams.get("code");
+    const params = new URL(window.location.href).searchParams;
+    const code = params.get("code");
+    const paperURL = params.get("paper");
     let restored = null;
     try {
         restored = await restoreProject();
     } catch (e) {
         console.log(e);
     }
-    if (code !== null) {
-        if (restored && !restored.reopen && restored.mode === "browser" && restored.readText(restored.mdPath) !== code &&
-            !confirm("Replace the paper kept in this browser with the one in this link?")) {
-            await setProject(restored);
-        } else {
-            await setProject(await newBrowserProject("paper.md", code));
-        }
+    const replaceRestored = () => !(restored && !restored.reopen && restored.mode === "browser") ||
+        confirm("Replace the paper kept in this browser with the one in this link?");
+    if (paperURL !== null && replaceRestored()) {
+        await openPaperURL(paperURL, restored);
+    } else if (code !== null && (restored && !restored.reopen && restored.mode === "browser" &&
+                                 restored.readText(restored.mdPath) === code || replaceRestored())) {
+        await setProject(await newBrowserProject("paper.md", code));
+        forgetLink();
     } else if (restored && restored.reopen) {
         reopenHandle = restored.reopen;
         updateProjectInfo();
         await setProject(await newBrowserProject("paper.md", await (await fetch(STARTER)).text()), false);
-        showMsg(`Click “Reopen ${reopenHandle.name}” to keep working on that folder.`);
+        showMsg(`Click “Reopen ${escapeHtml(reopenHandle.name)}” to keep working on that folder.`);
     } else if (restored) {
         await setProject(restored);
     } else {
@@ -214,12 +217,45 @@ function escapeHtml(text) {
     return text.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
+// The link's paper is now kept in the browser: reloading shouldn't load it again over any edits
+function forgetLink() {
+    const url = new URL(window.location.href);
+    url.searchParams.delete("paper");
+    url.searchParams.delete("code");
+    history.replaceState(null, "", url);
+}
+
+// Open the paper (.md or .txt) or zip of a paper's folder at url
+async function openPaperURL(url, fallback = null) {
+    showMsg(`Loading ${escapeHtml(url)}…`, false, true);
+    try {
+        await setProject(await openURLProject(url));
+        forgetLink();
+        // Its figure code runs in this page when it's compiled
+        showMsg(`Loaded ${escapeHtml(url)}. Compiling runs the paper's figure code in your browser, so compile only papers you trust.`,
+                false, true);
+    } catch (e) {
+        if (project === null) {
+            await setProject(fallback && !fallback.reopen ? fallback :
+                             await newBrowserProject("paper.md", await (await fetch(STARTER)).text()));
+        }
+        // (after setProject, which clears messages)
+        showMsg(escapeHtml(e.message), true);
+    }
+}
+
+async function clickOpenURL() {
+    const url = prompt("URL of a paper (.md or .txt) or of a zip of its folder:");
+    if (!url || !confirmReplaceBrowserProject()) return;
+    await openPaperURL(url.trim());
+}
+
 async function clickOpenFolder() {
     try {
         const opened = await openFolderProject();
         if (opened) await setProject(opened);
     } catch (e) {
-        showMsg("Couldn't open the folder: " + e.message, true);
+        showMsg("Couldn't open the folder: " + escapeHtml(e.message), true);
     }
 }
 
@@ -232,7 +268,7 @@ async function clickReopenFolder() {
             await setProject(opened);
         }
     } catch (e) {
-        showMsg("Couldn't open the folder: " + e.message, true);
+        showMsg("Couldn't open the folder: " + escapeHtml(e.message), true);
     }
 }
 
@@ -258,12 +294,27 @@ async function clickSave() {
     if (project === null) return;
     latestSource = ace.edit("editor").getValue();
     await project.write(project.mdPath, latestSource);
-    showMsg(project.mode === "browser" ? `Saved ${project.mdPath} in this browser` : `Saved ${project.mdPath}`);
+    showMsg(project.mode === "browser" ? `Saved ${escapeHtml(project.mdPath)} in this browser` : `Saved ${escapeHtml(project.mdPath)}`);
 }
 
 function clickDownloadPaper() {
     download(new Blob([ace.edit("editor").getValue()], { type: "text/markdown" }),
              project.mdPath.slice(project.mdPath.lastIndexOf("/") + 1));
+}
+
+// The code compiling generates (output_code/lib.py, lib.h, lib.m), one file or all in a zip
+function clickDownloadCode(file) {
+    const code = new Map([...project.files].filter(([path]) => path.startsWith("output_code/"))
+                                           .map(([path, bytes]) => [path.slice("output_code/".length), bytes]));
+    if (code.size === 0) {
+        showMsg("Compile the paper first: its code is generated by compiling.", true);
+    } else if (file === undefined) {
+        download(zipFiles(code), `${project.paperName}-code.zip`);
+    } else if (code.has(file)) {
+        download(new Blob([code.get(file)], { type: "text/plain" }), file);
+    } else {
+        showMsg(`The paper has no ${file}: it has no I❤️LA code.`, true);
+    }
 }
 
 async function clickDownloadZip() {
@@ -337,7 +388,7 @@ function reloadIframe(){
 }
 
 function updateError(err) {
-    showMsg(err, true);
+    showMsg(escapeHtml(err), true);
     activateBtnStatus();
 }
 
@@ -356,7 +407,7 @@ async function compileFunction(){
         console.log(`data.expr is ${data.expr}`);
         console.log(`data.msg is ${data.msg}`);
         if (data.expr) scrollToText(data.expr);
-        showMsg(data.msg, true);
+        showMsg(escapeHtml(data.msg), true);
     }
 }
 
@@ -380,7 +431,7 @@ async function clickCompile(){
         await compileFunction();
     } catch (error) {
         console.error(error);
-        showMsg('Compile error!\n' + error.message, true);
+        showMsg('Compile error!\n' + escapeHtml(error.message), true);
     } finally {
         compiling = false;
         activateBtnStatus();
@@ -464,7 +515,7 @@ async function onUpdatePython() {
             document.getElementById("res").contentWindow.updateFigure(curFigure, result.msg, true);
         }
     } catch (error) {
-        showMsg('Run error!\n' + error.message, true);
+        showMsg('Run error!\n' + escapeHtml(error.message), true);
     } finally {
         compiling = false;
         activateBtnStatus();
@@ -510,7 +561,8 @@ function clickCopy() {
     
 }
 
-function showMsg(msg, error=false){
+// msg is HTML: escape text from elsewhere (escapeHtml). A sticky notice stays until the next message or edit.
+function showMsg(msg, error=false, sticky=false){
     if (msgTimeout){
         clearTimeout(msgTimeout);
     }
@@ -523,8 +575,11 @@ function showMsg(msg, error=false){
     // Edit class: https://stackoverflow.com/questions/195951/how-can-i-change-an-elements-class-with-javascript
     el.classList.remove('alert-primary');
     el.classList.remove('alert-danger');
+    el.classList.remove('alert-warning');
     if(error) {
         el.classList.add('alert-danger');
+    } else if (sticky) {
+        el.classList.add('alert-warning');
     } else {
         // notice, auto hide
         el.classList.add('alert-primary');

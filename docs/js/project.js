@@ -4,8 +4,9 @@
 //     (Chromium). Writes go straight to disk.
 //   - "local": a folder on disk, through server.py, which serves the editor
 //     for one paper (any browser). Writes go to disk through the server.
-//   - "browser": IndexedDB. Files come in by opening or dropping them, and go
-//     out by downloading the paper or a zip of the folder.
+//   - "browser": IndexedDB. Files come in by opening or dropping them, or from
+//     a link (?paper=<url of a .md, .txt or .zip>), and go out by downloading
+//     the paper, its code, or a zip of the folder.
 // Either way, the folder is served to the preview by sw.js (see serveFile) and
 // mirrored into the Pyodide worker (see takeChanges).
 
@@ -45,6 +46,7 @@ class Project {
         this.files = files;        // Map: path -> Uint8Array
         this.handle = handle;      // FileSystemDirectoryHandle in folder mode
         this.mdPath = null;        // the paper, e.g. "paper.md"
+        this.baseURL = null;       // for a paper from a link: where to fetch the files it refers to
         // Paths changed or removed here since the worker last got them
         this.changed = new Set(files.keys());
         this.removed = new Set();
@@ -114,7 +116,7 @@ class Project {
 
     async remember() {
         await idb("meta", "readwrite", store => store.put(
-            { mode: this.mode, name: this.name, mdPath: this.mdPath, handle: this.handle }, "project"));
+            { mode: this.mode, name: this.name, mdPath: this.mdPath, handle: this.handle, baseURL: this.baseURL }, "project"));
     }
 }
 
@@ -245,6 +247,7 @@ async function restoreProject() {
     if (!files.has(meta.mdPath)) return null;
     const project = new Project("browser", meta.name, files);
     project.mdPath = meta.mdPath;
+    project.baseURL = meta.baseURL || null;
     return project;
 }
 
@@ -259,12 +262,126 @@ function serveProjectFiles(getProject) {
             return;
         }
         const bytes = project.read(path);
-        event.ports[0].postMessage(bytes ? { found: true, bytes } : { found: false });
+        if (bytes || !project.baseURL) {
+            event.ports[0].postMessage(bytes ? { found: true, bytes } : { found: false });
+            return;
+        }
+        // A paper from a link: fetch the file next to it (and keep it)
+        fetchRelative(project, path).then(
+            (fetched) => event.ports[0].postMessage(fetched ? { found: true, bytes: fetched } : { found: false }));
     });
+}
+
+// The file at path relative to a linked paper, saved in the project, or null if there isn't one
+async function fetchRelative(project, path) {
+    try {
+        const response = await fetch(new URL(path, project.baseURL));
+        if (!response.ok) return null;
+        const bytes = new Uint8Array(await response.arrayBuffer());
+        await project.write(path, bytes);
+        return bytes;
+    } catch (e) {
+        return null;
+    }
+}
+
+// The relative paths a paper refers to: src and href attributes, and Markdown links and images
+function referencedPaths(text) {
+    const paths = new Set();
+    const patterns = [/\b(?:src|href)\s*=\s*"([^"]+)"/g, /\b(?:src|href)\s*=\s*'([^']+)'/g, /!?\[[^\]]*\]\(\s*<?([^)\s>]+)/g];
+    for (const pattern of patterns) {
+        for (const m of text.matchAll(pattern)) {
+            const ref = m[1].split("#")[0].split("?")[0];
+            // relative paths in the paper's folder only
+            if (ref && !/^[a-z][a-z0-9+.-]*:/i.test(ref) && !ref.startsWith("/") && !ref.startsWith("//")) {
+                const path = new URL(ref, "https://paper/").pathname.slice(1);
+                if (path && !path.startsWith("..")) paths.add(decodeURIComponent(path));
+            }
+        }
+    }
+    return [...paths];
+}
+
+// A paper from a URL: a .md or .txt file (with the files it refers to, fetched relative to
+// it), or a .zip of its folder. Throws with a message if it can't be loaded.
+async function openURLProject(url) {
+    url = new URL(url, document.baseURI);
+    let response;
+    try {
+        response = await fetch(url);
+    } catch (e) {
+        throw new Error(`Couldn't load ${url}. (Its server must allow other sites to load it: CORS.)`);
+    }
+    if (!response.ok) throw new Error(`Couldn't load ${url}: ${response.status} ${response.statusText}`);
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    const name = decodeURIComponent(url.pathname.slice(url.pathname.lastIndexOf("/") + 1)) || "paper.md";
+    if (bytes[0] === 0x50 && bytes[1] === 0x4B && bytes[2] === 0x03 && bytes[3] === 0x04) {
+        // a zip of the paper's folder
+        const files = await unzip(bytes);
+        const project = new Project("browser", name.replace(/\.zip$/i, ""), files);
+        await saveBrowserProject(project);
+        return project;
+    }
+    const project = new Project("browser", url.host, new Map([[name, bytes]]));
+    project.mdPath = name;
+    project.baseURL = new URL(".", url).href;
+    // the bibliography and the files the paper refers to, if they're there
+    const stem = name.slice(0, name.lastIndexOf(".")) || name;
+    const wanted = [stem + ".bib", ...referencedPaths(decoder.decode(bytes))];
+    await Promise.all(wanted.filter(path => !project.files.has(path)).map(path => fetchRelative(project, path)));
+    project.changed = new Set(project.files.keys());
+    await saveBrowserProject(project);
+    return project;
+}
+
+// The files in a zip (stored or deflated), by path. A single top-level folder is left out of the paths.
+async function unzip(bytes) {
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    // the end of central directory record: the last 0x06054b50
+    let end = bytes.length - 22;
+    while (end >= 0 && view.getUint32(end, true) !== 0x06054b50) end--;
+    if (end < 0) throw new Error("Not a zip file");
+    const count = view.getUint16(end + 10, true);
+    let entry = view.getUint32(end + 16, true);
+    const files = new Map();
+    for (let i = 0; i < count; i++) {
+        if (view.getUint32(entry, true) !== 0x02014b50) throw new Error("Unsupported zip file");
+        const method = view.getUint16(entry + 10, true);
+        const compressedSize = view.getUint32(entry + 20, true);
+        const nameLength = view.getUint16(entry + 28, true);
+        const extraLength = view.getUint16(entry + 30, true);
+        const commentLength = view.getUint16(entry + 32, true);
+        const local = view.getUint32(entry + 42, true);
+        const path = decoder.decode(bytes.subarray(entry + 46, entry + 46 + nameLength));
+        entry += 46 + nameLength + extraLength + commentLength;
+        if (path.endsWith("/") || path.startsWith("__MACOSX/") || path.split("/").some(part => SKIP_DIRS.has(part))) continue;
+        const start = local + 30 + view.getUint16(local + 26, true) + view.getUint16(local + 28, true);
+        const data = bytes.subarray(start, start + compressedSize);
+        if (method === 0) {
+            files.set(path, data.slice());
+        } else if (method === 8) {
+            const stream = new Blob([data]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+            files.set(path, new Uint8Array(await new Response(stream).arrayBuffer()));
+        } else {
+            throw new Error(`Unsupported compression in the zip file (${path})`);
+        }
+    }
+    // a zip of a folder: paths relative to the folder
+    const tops = new Set([...files.keys()].map(path => path.includes("/") ? path.slice(0, path.indexOf("/")) : ""));
+    if (tops.size === 1 && !tops.has("")) {
+        const top = [...tops][0].length + 1;
+        return new Map([...files].map(([path, data]) => [path.slice(top), data]));
+    }
+    return files;
 }
 
 // A zip (stored, not compressed) of the project's files
 function zipProject(project) {
+    return zipFiles(project.files);
+}
+
+// A zip (stored, not compressed) of files, by path
+function zipFiles(files) {
     const crcTable = new Uint32Array(256).map((_, n) => {
         let c = n;
         for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1;
@@ -277,7 +394,7 @@ function zipProject(project) {
     };
     const parts = [], central = [];
     let offset = 0;
-    for (const [path, bytes] of project.files) {
+    for (const [path, bytes] of files) {
         const name = encoder.encode(path);
         const crc = crc32(bytes);
         const header = new DataView(new ArrayBuffer(30));
@@ -305,8 +422,8 @@ function zipProject(project) {
     const centralSize = central.reduce((n, p) => n + p.byteLength, 0);
     const end = new DataView(new ArrayBuffer(22));
     end.setUint32(0, 0x06054b50, true);
-    end.setUint16(8, project.files.size, true);
-    end.setUint16(10, project.files.size, true);
+    end.setUint16(8, files.size, true);
+    end.setUint16(10, files.size, true);
     end.setUint32(12, centralSize, true);
     end.setUint32(16, offset, true);
     return new Blob([...parts, ...central, end], { type: "application/zip" });

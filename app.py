@@ -335,7 +335,8 @@ def process_input(content, input_dir='.', resource_dir='.', file_name='result',
         equation_json = md.json_data
         # equation_data = get_sym_data(json.loads(equation_json))
         sym_json = md.json_sym
-        dst = "{}/heartdown-resource".format(input_dir)
+        # where the page looks for it: resource_dir is relative to the paper
+        dst = os.path.join(input_dir, resource_dir, "heartdown-resource")
         if not os.path.exists(dst):
             shutil.copytree(os.path.join(APP_DIR, "extras", "heartdown-resource"), dst)
         script = r"""window.onload = onLoad;

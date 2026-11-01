@@ -65,8 +65,12 @@ js/heartdown-worker.js      (disk or IndexedDB)         │ GET paper/<session>/
 
 - **Local:** when `server.py` serves the editor for a paper (`python3 server.py paper.md`), in any browser. The editor reads the folder through `GET /local/files` and `/local/file/<path>`, and writes through `PUT /local/file/<path>`. The server only listens on 127.0.0.1, refuses other `Host` names (against DNS rebinding) and paths outside the folder, and uses `PUT` for writes, which another site's page can't send without CORS approval. The editor checks for `/local/paper` when it loads, so the same `docs/` works with or without `server.py`.
 - **Folder:** the File System Access API (Chrome, Edge). The editor reads the folder once and writes every saved or generated file straight to it. The folder's handle is kept in IndexedDB, so the next visit offers to reopen it; that needs a click to grant permission again.
-- **Browser:** for browsers without the File System Access API, or for papers not on disk. **Open files**, **Import folder** or drag-and-drop copies files into IndexedDB. **Paper** and **Zip** download the paper, or the folder with its generated files. Only one browser paper is kept at a time.
-- A paper in the URL (`?code=`, from "Copy as URL") opens as a browser paper.
+- **Browser:** for browsers without the File System Access API, or for papers not on disk. **Open files**, **Import folder** or drag-and-drop copies files into IndexedDB. **Paper**, **Code** and **Zip** download the paper, its generated code, or the folder with its generated files. Only one browser paper is kept at a time.
+- A paper in the link opens as a browser paper: `?code=<the paper's text>` (from "Copy as URL"), or `?paper=<url>` (or **Open URL**).
+  - For a `.md` or `.txt`, the editor fetches the paper, its `.bib`, and the relative files it refers to (`src`, `href`, Markdown links), relative to its URL. It remembers that URL, so the preview fetches anything else it asks for from there on first use; in sw.js terms, a file missing from the folder.
+  - For a zip (detected by its contents, not its name), it unzips the folder (`DecompressionStream`).
+  - The parameter is then removed from the address bar, so a reload restores the browser paper with its edits rather than loading the link again.
+  - Compiling runs the paper's figure code in the page's origin, so the editor says to compile only papers you trust. Messages escape text from papers and URLs.
 
 ### Vendored files
 

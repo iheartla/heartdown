@@ -2,7 +2,7 @@
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-    <title>Editor</title>
+    <title>H❤️rtDown Editor</title>
     <link href="./css/bootstrap@5.1.2.min.css" rel="stylesheet">
     <script src="./js/bootstrap@5.1.2.bundle.min.js"></script>
     <link rel="stylesheet" href="./fonts/font-awesome-4.7.0/css/font-awesome.min.css">
@@ -20,20 +20,33 @@
     <script src="./js/src-noconflict/ace.js" type="text/javascript" charset="utf-8"></script>
     <script src="./js/src-noconflict/ext-language_tools.js"></script>
     <script src="./js/angular.js"></script>
+    <script type="text/javascript" src='./js/project.js'></script>
     <script type="text/javascript" src='./js/editor.js'></script>
     <script>
         window.onload = onLoad;
     </script>
     <script src="./js/jquery-3.6.0.min.js"></script>
-<!--    <script type="text/javascript" src="./js/pyodide/pyodide.js"></script>-->
     <link rel="stylesheet" href="css/style.css">
 </head>
 
 <body>
 <div class="container-fluid vh-100 d-flex flex-column">
-    <div class="row">
-        <div class="col">
+    <div class="row align-items-center">
+        <div class="col-auto">
             <h1 style="margin-top: 1ex;">H❤️rtDown Editor</h1>
+        </div>
+        <div class="col toolbar">
+            <button id="openFolder" class="btn btn-outline-secondary btn-sm" onclick="clickOpenFolder()" title="Open a paper's folder on your computer. Compiling saves the paper and the generated files there." hidden><i class="fa fa-folder-open"></i> Open folder</button>
+            <button id="reopenFolder" class="btn btn-outline-secondary btn-sm" onclick="clickReopenFolder()" hidden></button>
+            <label class="btn btn-outline-secondary btn-sm mb-0" title="Open a paper and the files it uses (.bib, .ihla, images) into this browser"><i class="fa fa-file-o"></i> Open files
+                <input type="file" multiple hidden onchange="onOpenFiles(this)"></label>
+            <label class="btn btn-outline-secondary btn-sm mb-0" title="Copy a paper's folder into this browser"><i class="fa fa-folder-o"></i> Import folder
+                <input type="file" webkitdirectory hidden onchange="onOpenFiles(this)"></label>
+            <button class="btn btn-outline-secondary btn-sm" onclick="clickNew()" title="Start a new paper in this browser"><i class="fa fa-plus"></i> New</button>
+            <button class="btn btn-outline-secondary btn-sm" onclick="clickSave()" title="Save the paper (Ctrl/⌘-S)"><i class="fa fa-floppy-o"></i> Save</button>
+            <button class="btn btn-outline-secondary btn-sm" onclick="clickDownloadPaper()" title="Download the paper (.md)"><i class="fa fa-download"></i> Paper</button>
+            <button class="btn btn-outline-secondary btn-sm" onclick="clickDownloadZip()" title="Download the paper's folder, with the generated HTML and code, as a zip"><i class="fa fa-file-archive-o"></i> Zip</button>
+            <span id="projectInfo" class="ms-2 small"></span>
         </div>
     </div>
     <div class="row flex-grow-1" style="margin: 0 0 1.5em 0;">
@@ -121,6 +134,21 @@
   </div>
 </div>
 
+<!-- Choose the paper in a folder -->
+<div class="modal fade" id="choosePaper" tabindex="-1" aria-labelledby="choosePaperLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="choosePaperLabel">Which paper?</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div id="paperList" class="list-group"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Loading Modal -->
 <div class="modal fade bd-example-modal-lg" id="loading" data-backdrop="static" data-keyboard="false" tabindex="-1">
     <div class="modal-dialog modal-sm">
@@ -133,9 +161,6 @@
 </body>
 
 <script>
-    // We have to do this before creating the ace editor, or else call an ace function.
-    loadCodeFromURLParameter();
-    
     // initPyodide()
     // const [ validBrowser, validBrowserMessage ] = checkBrowserVer();
     // showMsg( validBrowserMessage, !validBrowser );

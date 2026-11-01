@@ -150,3 +150,9 @@ a, a:hover, a:visited, a:active, a:link {
   color: inherit;
   text-decoration: underline solid grey;
 }
+.toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4em;
+}

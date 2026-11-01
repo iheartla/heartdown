@@ -22,221 +22,309 @@ let unicode_dict = {'R': 'ℝ', 'Z': 'ℤ', 'x': '×', 'times': '×', 'inf': '�
 let preEqCode = '';
 let preTestCode = '';
 let curFigure = '';
-let curHtml = '';
 let curFileName = '';
 let msgTimeout = null;
 let latestSource = '';
-function checkBrowserVer(){
-    var nVer = navigator.appVersion;
-    var nAgt = navigator.userAgent;
-    var browserName  = navigator.appName;
-    var fullVersion  = ''+parseFloat(navigator.appVersion);
-    var majorVersion = parseInt(navigator.appVersion,10);
-    var nameOffset,verOffset,ix;
-    var validBrowser = false;
-    // In Opera, the true version is after "Opera" or after "Version"
-    if ((verOffset=nAgt.indexOf("Opera"))!=-1) {
-        browserName = "Opera";
-        fullVersion = nAgt.substring(verOffset+6);
-        if ((verOffset=nAgt.indexOf("Version"))!=-1)
-            fullVersion = nAgt.substring(verOffset+8);
+let project = null;        // the open paper's folder (project.js)
+let reopenHandle = null;   // a folder from last time that needs permission again
+let worker = null;         // Pyodide running H❤️rtDown (heartdown-worker.js)
+let workerReady = false;
+let compiling = false;
+const pending = new Map(); // request id -> {resolve, reject}
+let nextRequestId = 0;
+const STARTER = "examples/starter.md";
+
+// The editor needs a service worker (to serve the paper's files to the preview)
+// and module workers, so a web server; any static one will do.
+function checkBrowser() {
+    if (window.location.protocol === "file:") {
+        return "Please open the editor through a web server, e.g. run `python3 -m http.server` in docs/ and browse to http://localhost:8000/.";
     }
-    // In MSIE, the true version is after "MSIE" in userAgent
-    else if ((verOffset=nAgt.indexOf("MSIE"))!=-1) {
-        browserName = "Microsoft Internet Explorer";
-        fullVersion = nAgt.substring(verOffset+5);
+    if (!("serviceWorker" in navigator)) {
+        return "This browser doesn't support service workers, which the editor needs. (They also need https:// or http://localhost.)";
     }
-    // In Chrome, the true version is after "Chrome"
-    else if ((verOffset=nAgt.indexOf("Chrome"))!=-1) {
-        browserName = "Chrome";
-        fullVersion = nAgt.substring(verOffset+7);
-        validBrowser = true;
-    }
-    // In Safari, the true version is after "Safari" or after "Version"
-    else if ((verOffset=nAgt.indexOf("Safari"))!=-1) {
-        browserName = "Safari";
-        fullVersion = nAgt.substring(verOffset+7);
-        if ((verOffset=nAgt.indexOf("Version"))!=-1)
-            fullVersion = nAgt.substring(verOffset+8);
+    return null;
+}
+
+function startWorker() {
+    workerReady = false;
+    worker = new Worker("./js/heartdown-worker.js", { type: "module" });
+    worker.onmessage = (event) => {
+        const data = event.data;
+        if (data.ready !== undefined) {
+            workerReady = data.ready;
+            if (data.ready) {
+                activateBtnStatus();
+            } else {
+                showMsg(data.error, true);
+                setBtnTitle("Failed to load");
+            }
+        } else if (data.status !== undefined) {
+            if (compiling) setBtnTitle(data.status, true);
+        } else if (pending.has(data.id)) {
+            const { resolve, reject } = pending.get(data.id);
+            pending.delete(data.id);
+            if (data.error !== undefined) reject(new Error(data.error));
+            else resolve(data);
         }
-    // In Firefox, the true version is after "Firefox"
-    else if ((verOffset=nAgt.indexOf("Firefox"))!=-1) {
-        browserName = "Firefox";
-        fullVersion = nAgt.substring(verOffset+8);
-        validBrowser = true;
-    }
-    // In most other browsers, "name/version" is at the end of userAgent
-    else if ( (nameOffset=nAgt.lastIndexOf(' ')+1) <
-            (verOffset=nAgt.lastIndexOf('/')) )
-    {
-        browserName = nAgt.substring(nameOffset,verOffset);
-        fullVersion = nAgt.substring(verOffset+1);
-        if (browserName.toLowerCase()==browserName.toUpperCase()) {
-            browserName = navigator.appName;
-        }
-    }
-    // trim the fullVersion string at semicolon/space if present
-    if ((ix=fullVersion.indexOf(";"))!=-1)
-        fullVersion=fullVersion.substring(0,ix);
-    if ((ix=fullVersion.indexOf(" "))!=-1)
-        fullVersion=fullVersion.substring(0,ix);
-
-    majorVersion = parseInt(''+fullVersion,10);
-    if (isNaN(majorVersion)) {
-        fullVersion  = ''+parseFloat(navigator.appVersion);
-        majorVersion = parseInt(navigator.appVersion,10);
-    }
-    let result = false;
-    if (validBrowser){
-        result = true;
-        msg = "Valid browser!";
-    }
-    else{
-        msg = "You are using " + browserName + ". Please use Chrome or Firefox.";
-    }
-    console.log(msg);
-
-    // Also check for a secure context.
-    // UPDATE: This isn't needed.
-    /*
-    if( !window.isSecureContext ) {
-        result = false;
-        msg = "This is not a secure context. You must use 'https://' or 'http://localhost'."
-        console.log(msg);
-    }
-    */
-
-    // Make sure we're not running from a file: URL (if the user double-clicked index.html)
-    // Source: https://stackoverflow.com/questions/3920892/how-to-detect-if-a-web-page-is-running-from-a-website-or-local-file-system
-    /// It turns out we don't need a secure context.
-    // if( !window.isSecureContext ) {
-    /// But a file: URL won't work.
-    if( window.location.protocol === "file:" ) {
-        result = false;
-        msg = "Please run via a local webserver. Try `python3 -m http.server` and then browse to 'http://localhost:8000/'."
-        console.log(msg);
-    }
-
-    return [ result, msg ];
+    };
+    worker.onerror = (event) => {
+        console.log(event);
+        showMsg("H❤️rtDown failed to load: " + (event.message || "see the browser console"), true);
+    };
 }
 
-function isChrome(){
-    let nAgt = navigator.userAgent;
-    if (nAgt.indexOf("Chrome")!=-1) {
-        return true;
+// Send a request to the worker with the paper's changed files; save the files it wrote
+async function ask(request) {
+    if (request.type !== "reset") Object.assign(request, project.takeChanges());
+    const id = nextRequestId++;
+    const reply = await new Promise((resolve, reject) => {
+        pending.set(id, { resolve, reject });
+        worker.postMessage({ id, ...request });
+    });
+    for (const [path, bytes] of Object.entries(reply.written)) {
+        await project.write(path, bytes, true);
     }
-    return false;
+    return reply.result;
 }
 
- async function initPyodide(){
-    await loadPyodide({
-          indexURL : self.location.origin + "/js/pyodide/"
-        });
-    let wheel = "./linear_algebra-0.0.1-py3-none-any.whl";
-    let tatsu = "./TatSu-4.4.0-py2.py3-none-any.whl";
-    let pybtex = "./pybtex-0.24.0-py2.py3-none-any.whl";
-    let PyYAML = "./PyYAML-6.0-cp38-cp38-macosx_10_9_x86_64.whl";
-    pythonCode = `
-    import micropip
-    micropip.install('appdirs')
-    micropip.install('regex')
-    micropip.install('sympy')
-    micropip.install('six')
-    micropip.install('setuptools')
-    micropip.install('scipy')
-    micropip.install('numpy')
-    micropip.install('${PyYAML}')
-    micropip.install('${pybtex}')
-    micropip.install('${tatsu}')
-    micropip.install('${wheel}')
-    `
-    await pyodide.loadPackage(['micropip']);
-    await pyodide.runPython(pythonCode);
-    activateBtnStatus();
-}
-
-async function background(source){
+async function onLoad(){
+    const problem = checkBrowser();
+    if (problem) {
+        showMsg(problem, true);
+        setBtnTitle("Unavailable");
+        return;
+    }
+    initBtnStatus();
+    serveProjectFiles(() => project);
+    startWorker();
     try {
-        const {results, error} = await asyncRun(source);
-        activateBtnStatus();
-        if (results) {
-            console.log('pyodideWorker return results: ', results);
-            if (Array.isArray(results)){
-              updateEditor(results);
-            }
-            else{
-                console.log(results)
-                updateError(results);
-            }
-        } else if (error) {
-            updateError(error);
-            console.log('pyodideWorker error: ', error);
+        await navigator.serviceWorker.register("./sw.js");
+        await navigator.serviceWorker.ready;
+    } catch (e) {
+        showMsg("Couldn't start the service worker for the preview: " + e.message, true);
+    }
+    initDropTarget();
+    // A paper in the URL (from "Copy as URL") comes first, then the paper from last time
+    const code = new URL(window.location.href).searchParams.get("code");
+    let restored = null;
+    try {
+        restored = await restoreProject();
+    } catch (e) {
+        console.log(e);
+    }
+    if (code !== null) {
+        if (restored && !restored.reopen && restored.mode === "browser" && restored.readText(restored.mdPath) !== code &&
+            !confirm("Replace the paper kept in this browser with the one in this link?")) {
+            await setProject(restored);
+        } else {
+            await setProject(await newBrowserProject("paper.md", code));
         }
+    } else if (restored && restored.reopen) {
+        reopenHandle = restored.reopen;
+        updateProjectInfo();
+        await setProject(await newBrowserProject("paper.md", await (await fetch(STARTER)).text()), false);
+        showMsg(`Click “Reopen ${reopenHandle.name}” to keep working on that folder.`);
+    } else if (restored) {
+        await setProject(restored);
+    } else {
+        await setProject(await newBrowserProject("paper.md", await (await fetch(STARTER)).text()));
     }
-    catch (e){
-        console.log(`Error in pyodideWorker at ${e.filename}, Line: ${e.lineno}, ${e.message}`)
-        activateBtnStatus();
+}
+
+// Switch to another paper folder
+async function setProject(newProject, remember = true) {
+    if (project !== null && worker !== null) {
+        await ask({ type: "reset" }).catch(e => console.log(e));
+    }
+    if (newProject.mdPath === null || !newProject.files.has(newProject.mdPath)) {
+        newProject.mdPath = await choosePaper(newProject);
+        if (newProject.mdPath === null) return;
+    }
+    project = newProject;
+    project.resync();
+    if (remember) {
+        reopenHandle = null;
+        await project.remember();
+    }
+    latestSource = project.readText(project.mdPath);
+    let editor = ace.edit("editor");
+    editor.setValue(latestSource, -1);
+    curFileName = project.paperName;
+    removeIframe();
+    updateProjectInfo();
+}
+
+// The paper (.md) in a folder: the only one, one the user picks, or a new one
+function choosePaper(newProject) {
+    const papers = newProject.mdFiles();
+    if (papers.length === 1) return Promise.resolve(papers[0]);
+    if (papers.length === 0) {
+        let name = prompt("This folder has no paper (.md) yet. Name of the new paper:", "paper.md");
+        if (!name) return Promise.resolve(null);
+        if (!/\.(md|txt)$/i.test(name)) name += ".md";
+        return fetch(STARTER).then(r => r.text()).then(async text => {
+            await newProject.write(name, text);
+            return name;
+        });
+    }
+    return new Promise((resolve) => {
+        const list = document.getElementById("paperList");
+        list.innerHTML = "";
+        const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById("choosePaper"));
+        for (const path of papers) {
+            const button = document.createElement("button");
+            button.className = "list-group-item list-group-item-action";
+            button.textContent = path;
+            button.onclick = () => { modal.hide(); resolve(path); };
+            list.appendChild(button);
+        }
+        document.getElementById("choosePaper").addEventListener("hidden.bs.modal", () => resolve(null), { once: true });
+        modal.show();
+    });
+}
+
+function updateProjectInfo() {
+    const info = document.getElementById("projectInfo");
+    if (project === null) {
+        info.textContent = "";
+    } else if (project.mode === "folder") {
+        info.innerHTML = `<i class="fa fa-folder-open"></i> ${escapeHtml(project.name)}/${escapeHtml(project.mdPath)}`;
+        info.title = "Saved in this folder on your computer";
+    } else {
+        info.innerHTML = `<i class="fa fa-database"></i> ${escapeHtml(project.mdPath)} <span class="text-muted">(in this browser)</span>`;
+        info.title = "Saved in this browser. Download the paper or a zip of all its files to keep them.";
+    }
+    document.getElementById("openFolder").hidden = !Project.canOpenFolder();
+    const reopen = document.getElementById("reopenFolder");
+    reopen.hidden = reopenHandle === null;
+    if (reopenHandle !== null) reopen.innerHTML = `<i class="fa fa-folder-open"></i> Reopen ${escapeHtml(reopenHandle.name)}`;
+}
+
+function escapeHtml(text) {
+    return text.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+async function clickOpenFolder() {
+    try {
+        const opened = await openFolderProject();
+        if (opened) await setProject(opened);
+    } catch (e) {
+        showMsg("Couldn't open the folder: " + e.message, true);
     }
 }
 
-function onLoad(){
-    postData(`http://${window.location.hostname}:${window.location.port}/file`, { type: "init"})
-      .then(data => {
-          if (data.ret === 0){
-            let editor = ace.edit("editor");
-            editor.setValue(data.content, 1);
-            latestSource = data.content;
-          }
-     });
+async function clickReopenFolder() {
+    try {
+        const opened = await openFolderProject(reopenHandle);
+        if (opened) {
+            const meta = await idb("meta", "readonly", store => store.get("project"));
+            opened.mdPath = meta ? meta.mdPath : null;
+            await setProject(opened);
+        }
+    } catch (e) {
+        showMsg("Couldn't open the folder: " + e.message, true);
+    }
 }
 
-function convert(input) {
-    showIframe();
-    // output.innerHTM = `<iframe srcdoc=`${input}`></iframe>`;
-    // MathJax.texReset();
-    // var options = MathJax.getMetricsFor(output);
-    // options.display = 1;
-    // MathJax.tex2chtmlPromise(input, options).then(function (node) {
-    //     output.appendChild(node);
-    //     MathJax.startup.document.clear();
-    //     MathJax.startup.document.updateDocument();
-    // }).catch(function (err) {
-    //     output.appendChild(document.createElement('pre')).appendChild(document.createTextNode(err.message));
-    // }).then(function () {
-    // });
+async function onOpenFiles(input) {
+    if (input.files.length === 0) return;
+    if (!confirmReplaceBrowserProject()) return;
+    await setProject(await openFilesProject(input.files));
+    input.value = "";
 }
 
-function showIframe(){
-    output = document.getElementById('output');
+async function clickNew() {
+    if (!confirmReplaceBrowserProject()) return;
+    await setProject(await newBrowserProject("paper.md", await (await fetch(STARTER)).text()));
+}
+
+// Opening files replaces the paper kept in this browser (but not a folder on disk)
+function confirmReplaceBrowserProject() {
+    return project === null || project.mode !== "browser" ||
+        confirm("This replaces the paper kept in this browser and its files. Download a zip of them first if you need them. Continue?");
+}
+
+async function clickSave() {
+    if (project === null) return;
+    latestSource = ace.edit("editor").getValue();
+    await project.write(project.mdPath, latestSource);
+    showMsg(project.mode === "folder" ? `Saved ${project.mdPath}` : `Saved ${project.mdPath} in this browser`);
+}
+
+function clickDownloadPaper() {
+    download(new Blob([ace.edit("editor").getValue()], { type: "text/markdown" }),
+             project.mdPath.slice(project.mdPath.lastIndexOf("/") + 1));
+}
+
+async function clickDownloadZip() {
+    await project.write(project.mdPath, ace.edit("editor").getValue());
+    download(zipProject(project), `${project.paperName}.zip`);
+}
+
+function initDropTarget() {
+    document.addEventListener("dragover", (event) => event.preventDefault());
+    document.addEventListener("drop", async (event) => {
+        event.preventDefault();
+        const files = await droppedFiles(event.dataTransfer);
+        if (files.length === 0 || !confirmReplaceBrowserProject()) return;
+        await setProject(await openFilesProject(files));
+    });
+}
+
+// The files (and files in folders) of a drop, each with its relative path
+async function droppedFiles(dataTransfer) {
+    const entries = [...dataTransfer.items].map(item => item.webkitGetAsEntry && item.webkitGetAsEntry()).filter(e => e);
+    if (entries.length === 0) return [...dataTransfer.files];
+    const files = [];
+    const walk = async (entry, prefix) => {
+        if (entry.isFile) {
+            const file = await new Promise((resolve, reject) => entry.file(resolve, reject));
+            file.relativePath = prefix + entry.name;
+            files.push(file);
+        } else {
+            const reader = entry.createReader();
+            let batch;
+            do {
+                batch = await new Promise((resolve, reject) => reader.readEntries(resolve, reject));
+                for (const child of batch) await walk(child, `${prefix}${entry.name}/`);
+            } while (batch.length > 0);
+        }
+    };
+    for (const entry of entries) await walk(entry, "");
+    // One dropped folder: its files are relative to it
+    return files;
+}
+
+function removeIframe(){
+    const output = document.getElementById('output');
     while (output.firstChild) {
         output.removeChild(output.firstChild);
     }
-    var iframe = document.createElement('iframe');
+}
+
+function showIframe(figures){
+    const output = document.getElementById('output');
+    const old = document.getElementById('res');
+    // Keep the reader's place across compiles
+    let scroll = 0;
+    try { scroll = old ? old.contentWindow.scrollY : 0; } catch (e) { /* not loaded */ }
+    const iframe = document.createElement('iframe');
     iframe.setAttribute("id", "res");
-    iframe.src = encodeURI(`./${curFileName}.html`);
+    iframe.onload = () => {
+        if (scroll) iframe.contentWindow.scrollTo(0, scroll);
+        if (figures && typeof iframe.contentWindow.handleFigure === "function") {
+            iframe.contentWindow.handleFigure(figures);
+        }
+    };
+    iframe.src = project.previewURL(`${curFileName}.html`) + `?v=${Date.now()}`;
+    removeIframe();
     output.appendChild(iframe);
-    // iframe.contentWindow.document.open();
-    // iframe.contentWindow.document.write(curHtml);
-    // iframe.contentWindow.document.close();
 }
 
 function reloadIframe(){
-    cur_if = document.getElementById('res');
-    cur_if.contentWindow.location.reload();
-}
-
-function updateEditor(code) {
-    showMsg('Compile succeeded');
-    // var cpp = ace.edit("cpp");
-    // cpp.session.setValue(code[2]);
-    // var python = ace.edit("python");
-    // python.session.setValue(code[1]);
-    curHtml = code[0];
-    convert(code[0]);
-    // var matlab = ace.edit("matlab");
-    // matlab.session.setValue(code[3]);
-    // reset UI
-    activateBtnStatus();
+    const iframe = document.getElementById('res');
+    if (iframe) iframe.contentWindow.location.reload();
 }
 
 function updateError(err) {
@@ -244,99 +332,24 @@ function updateError(err) {
     activateBtnStatus();
 }
 
-function updateRunError(err) {
-    showMsg(err, true);
-    activateRunBtnStatus();
-}
-
-function runFunction(){
-    var libCode = ace.edit("python").getValue();
-    var test = ace.edit("test").getValue();
-    pythonCode = libCode + test;
-    setTimeout(function(){
-        try {
-            pyodide.runPython(pythonCode);
-            showMsg('Run succeeded');
-            // reset UI
-            activateRunBtnStatus();
-        }
-        catch (error){
-            console.log('Run error!');
-            updateRunError('Run error!');
-        }
-        }, 1000);
-}
-
-function compileFunction(){
-    var iheartla = ace.edit("editor");
-    var source = iheartla.getValue();
+async function compileFunction(){
+    let editor = ace.edit("editor");
+    const source = editor.getValue();
     latestSource = source;
-    // console.log(source)
-//     pythonCode = `
-// import linear_algebra.iheartla.la_parser.parser
-// from linear_algebra.app import process_input
-// source_code = r"""${source}"""
-// #code = process_input
-// #code = linear_algebra.iheartla.la_parser.parser.compile_la_content(source_code)
-// code = process_input(source_code)
-// #print(code)
-// `
-    setTimeout(function(){
-        try {
-            // pyodide.runPython(pythonCode);
-            // let code = pyodide.globals.get('code');
-            // // convert(code);
-            // if (typeof code === 'string'){
-            //     updateError(code);
-            // }
-            // else{
-            //     updateEditor(code.toJs());
-            // }
-            postData(`http://${window.location.hostname}:${window.location.port}/handler`, { input:  source})
-              .then(data => {
-                  if (data.ret === 0){
-                      curFileName = data.name;
-                      updateEditor(data.res);
-                  }
-                  else{
-                      console.log(`data.expr is ${data.expr}`);
-                      console.log(`data.msg is ${data.msg}`);
-                      scrollToText(data.expr);
-                      showMsg(data.msg, true);
-                      activateBtnStatus();
-                  }
-                  // It has to wait for iframe loading, any better way?
-                  setTimeout(function(){
-                    document.getElementById("res").contentWindow.handleFigure(data.fig);
-                  }, 1000);
-                  $('#loading').modal('hide');
-             });
-        }
-        catch (error){
-            console.log('Compile error!');
-            updateError('Compile error!');
-            $('#loading').modal('hide');
-        }
-        }, 1000);
+    // Save the paper, as the server did on every compile
+    await project.write(project.mdPath, source);
+    const data = await ask({ type: "compile", name: project.paperName, source });
+    if (data.ret === 0) {
+        curFileName = data.name;
+        showMsg('Compile succeeded');
+        showIframe(data.fig);
+    } else {
+        console.log(`data.expr is ${data.expr}`);
+        console.log(`data.msg is ${data.msg}`);
+        if (data.expr) scrollToText(data.expr);
+        showMsg(data.msg, true);
+    }
 }
-
-async function postData(url = '', data = {}) {
-  const response = await fetch(url, {
-    method: 'POST',
-    mode: 'cors',
-    cache: 'no-cache',
-    credentials: 'same-origin',
-    headers: {
-      'Content-Type': 'application/json'
-      // 'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    redirect: 'follow',
-    referrerPolicy: 'no-referrer',
-    body: JSON.stringify(data)
-  });
-  return response.json();
-}
-
 
 function onEditEquation(raw_text){
     preEqCode = decodeURIComponent(escape(window.atob(raw_text)));
@@ -348,35 +361,21 @@ function onEditEquation(raw_text){
     equation.session.on('change', onEditIhla);
 }
 
-function clickCompile(){
+async function clickCompile(){
+    if (!workerReady || compiling || project === null) return;
     hideMsg();
-    $('#loading').modal('show');
+    compiling = true;
+    document.getElementById("compile").disabled = true;
+    setBtnTitle("Compiling", true);
     try {
-        document.getElementById("compile").disabled = true;
-        document.getElementById("compile").innerHTML = `<i id="submit_icon" class="fa fa-refresh fa-spin"></i> Compiling`;
-        compileFunction();
+        await compileFunction();
     } catch (error) {
         console.error(error);
+        showMsg('Compile error!\n' + error.message, true);
+    } finally {
+        compiling = false;
         activateBtnStatus();
     }
-    finally {
-        $('#loading').modal('hide');
-    }
-}
-
-function clickRun(){
-    scrollToText('d = a - c');
-    // hideMsg();
-    // try {
-    //     document.getElementById("run").disabled = true;
-    //     document.getElementById("run").innerHTML = `<i id="run_icon" class="fa fa-refresh fa-spin"></i> Running`;
-    //     runFunction();
-    // } catch (error) {
-    //     console.error(error);
-    //     activateRunBtnStatus();
-    // }
-    // finally {
-    // }
 }
 
 function onCancelUpdateEq() {
@@ -435,33 +434,32 @@ function onUpdateEq() {
      clickCompile();
 }
 
-function onUpdatePython() {
-    $('#loading').modal('show');
+async function onUpdatePython() {
     let python = ace.edit("python");
-    content = python.getValue();
+    const content = python.getValue();
     let editor = ace.edit("editor");
     latestSource = latestSource.replace(preTestCode, content);
     $('#testEditor').modal('hide');
     clearTest();
     editor.setValue(latestSource, 1);
-    // same as manually clicking
-    // clickCompile();
-    postData(`http://${window.location.hostname}:${window.location.port}/file`, { src:  curFigure, type:"run", source: content})
-      .then(data => {
-          $('#loading').modal('hide');
-          console.log(`data.ret:${data.ret}`);
-          if (data.ret === 0){
-              // refresh iframe
-              console.log("success");
-              reloadIframe();
-          }
-          else{
-              // error
-              console.log(`error is ${data.msg}`);
-              $('#loading').modal('hide');
-              document.getElementById("res").contentWindow.updateFigure(curFigure, data.msg, true);
-          }
-     });
+    compiling = true;
+    document.getElementById("compile").disabled = true;
+    setBtnTitle("Running", true);
+    try {
+        await project.write(project.mdPath, latestSource);
+        const result = await ask({ type: "figure", name: curFigure, source: content });
+        if (result.ok) {
+            reloadIframe();
+        } else {
+            console.log(`error is ${result.msg}`);
+            document.getElementById("res").contentWindow.updateFigure(curFigure, result.msg, true);
+        }
+    } catch (error) {
+        showMsg('Run error!\n' + error.message, true);
+    } finally {
+        compiling = false;
+        activateBtnStatus();
+    }
 }
 
 function onCancelUpdatePython() {
@@ -475,16 +473,14 @@ function clearTest() {
 }
 
 function onClickFigure(ele, name){
-    console.log(`you clicked ${name}`);
     curFigure = name;
-    postData(`http://${window.location.hostname}:${window.location.port}/file`, { src:  name, type: "get"})
-      .then(data => {
-          console.log(`data is ${data.res}`);
-        let python = ace.edit("python");
-        preTestCode = data.res;
-        python.setValue(data.res, 1);
-        $('#testEditor').modal('show');
-     });
+    // app.py saves each figure's code next to the paper (IMG_CODE is ".")
+    const code = project.readText(`${name}.py`);
+    if (code === undefined) return;
+    let python = ace.edit("python");
+    preTestCode = code;
+    python.setValue(code, 1);
+    $('#testEditor').modal('show');
 }
 
 function clickCopy() {
@@ -534,27 +530,22 @@ function hideMsg(){
     document.getElementById("msg").hidden = true; document.getElementById("msg").innerHTML = '';
 }
 
-function setBtnTitle(text){
-    document.getElementById("compile").innerHTML = `<i id="submit_icon" class="fa fa-refresh"></i> ` + text;
-}
-
-function setRunBtnTitle(text){
-    document.getElementById("run").innerHTML = `<i id="run_icon" class="fa fa-refresh"></i> ` + text;
+function setBtnTitle(text, spin=false){
+    document.getElementById("compile").innerHTML = `<i id="submit_icon" class="fa fa-refresh${spin ? " fa-spin" : ""}"></i> ` + text;
 }
 
 function initBtnStatus(){
     document.getElementById("compile").disabled = true;
-    document.getElementById("compile").innerHTML = `Initializing...`;
+    setBtnTitle("Loading H❤️rtDown…", true);
 }
 
 function activateBtnStatus(){
+    if (!workerReady) {
+        initBtnStatus();
+        return;
+    }
     document.getElementById("compile").disabled = false;
     setBtnTitle("Compile");
-}
-
-function activateRunBtnStatus(){
-    document.getElementById("run").disabled = false;
-    setRunBtnTitle("Run");
 }
 
 function onEditIhla(e){
@@ -579,17 +570,6 @@ function substitute(editor){
     }
 }
 
-// Set the contents of the code editor to a `code` parameter if present.
-function loadCodeFromURLParameter() {
-    const url = new URL(window.location.href);
-    const code = url.searchParams.get("code");
-    if( code !== null ) {
-        // If this is called after the ace editor is created, then we need
-        // to set the code a different way.
-        document.getElementById("editor").innerHTML = code;
-    }
-}
-
 function captureHotKeys() {
     // https://stackoverflow.com/questions/93695/best-cross-browser-method-to-capture-ctrls-with-jquery
     window.addEventListener( 'keydown', function(event) {
@@ -598,6 +578,10 @@ function captureHotKeys() {
             case 'r':
                 event.preventDefault();
                 clickCompile();
+                break;
+            case 's':
+                event.preventDefault();
+                clickSave();
                 break;
             }
         }

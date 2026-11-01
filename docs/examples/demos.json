@@ -1,8 +1,17 @@
 {
-  "_comment": "The case studies of the H❤️rtDown gallery, for the editor's Demos menu. Paper paths are relative to base.",
+  "_comment": "The editor's Demos menu: its basic example (example, relative to this file), then the case studies of the H❤️rtDown gallery (paper, relative to base).",
   "gallery": "https://iheartla.github.io/heartdown/CaseStudies/gallery/index.html",
   "base": "https://iheartla.github.io/heartdown/CaseStudies/static/gallery_res/",
   "groups": [
+    {
+      "title": "Basic example",
+      "demos": [
+        {
+          "title": "A H❤️rtDown Paper: an I❤️LA function and a figure that plots it",
+          "example": "starter.md"
+        }
+      ]
+    },
     {
       "title": "Entire papers",
       "demos": [

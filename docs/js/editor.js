@@ -288,8 +288,15 @@ function showDemos() {
 async function openDemo(demo) {
     bootstrap.Modal.getOrCreateInstance(document.getElementById("demos")).hide();
     if (!confirmReplaceBrowserProject()) return;
-    await openPaperURL(new URL(demo.paper, demos.base).href, null,
-                       `Loaded the demo “${escapeHtml(demo.title)}”. Click Compile to see it.`);
+    const loaded = `Loaded the demo “${escapeHtml(demo.title)}”. Click Compile to see it.`;
+    if (demo.example) {
+        // the editor's own example: a new paper from it, as New does
+        const text = await (await fetch(new URL(demo.example, new URL("examples/", document.baseURI)))).text();
+        await setProject(await newBrowserProject("paper.md", text));
+        showMsg(loaded, false, true);
+    } else {
+        await openPaperURL(new URL(demo.paper, demos.base).href, null, loaded);
+    }
 }
 
 async function clickOpenURL() {

@@ -24,7 +24,7 @@ Served this way, the editor starts with an example paper, and you choose where p
 
 - **Open folder** (Chrome and Edge) works on a paper's folder on your computer, reading and writing it directly. The editor offers to reopen the folder next time.
 - **Open files**, **Import folder** and drag-and-drop (any browser) copy a paper and its files into the browser's storage, where the editor keeps them. **Paper** downloads the `.md` file. **Zip** downloads the folder with everything it generated. **New** starts a new paper in the browser.
-- **Demos** opens the basic example (the one a new paper starts from) or one of the case studies from the [H❤️rtDown gallery](https://iheartla.github.io/heartdown/CaseStudies/gallery/index.html) (listed in `docs/examples/demos.json`).
+- **Demos** opens the basic example (the one a new paper starts from), one of the simple examples from [heartdown_examples_simple](https://github.com/iheartla/heartdown_examples_simple) (in `docs/examples/simple/`), or one of the case studies from the [H❤️rtDown gallery](https://iheartla.github.io/heartdown/CaseStudies/gallery/index.html) (all listed in `docs/examples/demos.json`).
 - **Open URL**, or a link to the editor with `?paper=<url>`, opens a paper on the web into the browser's storage. The URL can be:
   - a paper (`.md` or `.txt`): the editor also fetches its `.bib` and the files it refers to (such as `<img src="./img/fig1.png">`), relative to the paper's URL;
   - a zip of the paper's folder.
@@ -49,7 +49,7 @@ A paper is a Markdown file (`.md`) in a folder, next to the files it uses: a `.b
 
 **Code** downloads the generated code (`lib.py`, `lib.h` or `lib.m`, or all three), the same code the command line generates.
 
-The first compile of a paper with figure code takes a few seconds longer, because it loads NumPy, SciPy and Matplotlib. If figure code imports other packages that Pyodide provides, such as scikit-image, they load from the Pyodide CDN, which needs a network connection.
+The first compile of a paper with figure code takes a few seconds longer, because it loads NumPy, SciPy and Matplotlib. If figure code imports other packages that Pyodide provides, such as scikit-image, they load from the Pyodide CDN. Packages Pyodide doesn't provide, such as plotly, install from PyPI if they're pure Python. Both need a network connection.
 
 ## Compiling from the command line
 

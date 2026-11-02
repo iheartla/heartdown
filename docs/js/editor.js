@@ -231,10 +231,11 @@ function forgetLink() {
 
 // Open the paper (.md or .txt) or zip of a paper's folder at url.
 // loaded: the message once it's open (HTML), if not the warning for papers from anywhere
-async function openPaperURL(url, fallback = null, loaded = null) {
+// files: other files to fetch with it (see openURLProject)
+async function openPaperURL(url, fallback = null, loaded = null, files = []) {
     showMsg(`Loading ${escapeHtml(url)}…`, false, true);
     try {
-        await setProject(await openURLProject(url));
+        await setProject(await openURLProject(url, files));
         forgetLink();
         // Its figure code runs in this page when it's compiled
         showMsg(loaded || `Loaded ${escapeHtml(url)}. Compiling runs the paper's figure code in your browser, so compile only papers you trust.`,
@@ -249,12 +250,13 @@ async function openPaperURL(url, fallback = null, loaded = null) {
     }
 }
 
-let demos = null;  // examples/demos.json: the gallery's case studies
+const DEMOS = new URL("examples/demos.json", document.baseURI);
+let demos = null;  // examples/demos.json: the basic example, simple examples and the gallery's case studies
 
 async function clickDemos() {
     if (demos === null) {
         try {
-            demos = await (await fetch("examples/demos.json")).json();
+            demos = await (await fetch(DEMOS)).json();
         } catch (e) {
             showMsg("Couldn't load the list of demos: " + escapeHtml(e.message), true);
             return;
@@ -278,24 +280,26 @@ function showDemos() {
             button.type = "button";
             button.className = "list-group-item list-group-item-action";
             button.textContent = demo.title;
-            button.onclick = () => openDemo(demo);
+            button.onclick = () => openDemo(demo, group);
             items.appendChild(button);
         }
         list.append(heading, items);
     }
 }
 
-async function openDemo(demo) {
+async function openDemo(demo, group) {
     bootstrap.Modal.getOrCreateInstance(document.getElementById("demos")).hide();
     if (!confirmReplaceBrowserProject()) return;
     const loaded = `Loaded the demo “${escapeHtml(demo.title)}”. Click Compile to see it.`;
     if (demo.example) {
         // the editor's own example: a new paper from it, as New does
-        const text = await (await fetch(new URL(demo.example, new URL("examples/", document.baseURI)))).text();
+        const text = await (await fetch(new URL(demo.example, DEMOS))).text();
         await setProject(await newBrowserProject("paper.md", text));
         showMsg(loaded, false, true);
     } else {
-        await openPaperURL(new URL(demo.paper, demos.base).href, null, loaded);
+        // a group's base is relative to demos.json
+        const base = group.base ? new URL(group.base, DEMOS) : demos.base;
+        await openPaperURL(new URL(demo.paper, base).href, null, loaded, demo.files || []);
     }
 }
 

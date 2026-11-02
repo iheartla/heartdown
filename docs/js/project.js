@@ -314,7 +314,8 @@ function referencedPaths(text) {
 
 // A paper from a URL: a .md or .txt file (with the files it refers to, fetched relative to
 // it), or a .zip of its folder. Throws with a message if it can't be loaded.
-async function openURLProject(url) {
+// files: paths of other files to fetch with a paper (not a zip), relative to it, such as the modules its figure code imports
+async function openURLProject(url, files = []) {
     url = new URL(url, document.baseURI);
     let response;
     try {
@@ -337,7 +338,7 @@ async function openURLProject(url) {
     project.baseURL = new URL(".", url).href;
     // the bibliography and the files the paper refers to, if they're there
     const stem = name.slice(0, name.lastIndexOf(".")) || name;
-    const wanted = [stem + ".bib", ...referencedPaths(decoder.decode(bytes))];
+    const wanted = [stem + ".bib", ...referencedPaths(decoder.decode(bytes)), ...files];
     await Promise.all(wanted.filter(path => !project.files.has(path)).map(path => fetchRelative(project, path)));
     project.changed = new Set(project.files.keys());
     await saveBrowserProject(project);

@@ -24,6 +24,8 @@ const APP_DIR = "/heartdown";
 const PAPER_DIR = "/paper";
 // Generated code imports these; figure code usually does too. Loaded on first use.
 const FIGURE_PACKAGES = ["numpy", "scipy", "matplotlib"];
+// What modules need for what figures usually do but don't require, which Pyodide provides
+const OPTIONAL_PACKAGES = { "plotly.express": ["pandas"] };  // without a DataFrame
 
 const status = (text) => self.postMessage({ status: text });
 
@@ -63,6 +65,23 @@ async function loadFigurePackages(pyodide, code) {
     // Anything else the figure code imports that Pyodide provides (e.g. skimage)
     status("Loading the packages figures import…");
     await pyodide.loadPackagesFromImports(code);
+    pyodide.globals.set("code", code);
+    const imports = pyodide.runPython("from pyodide.code import find_imports\nfind_imports(code)").toJs();
+    const optional = imports.flatMap(m => OPTIONAL_PACKAGES[m] || []);
+    if (optional.length) await pyodide.loadPackage(optional);
+    // and what Pyodide doesn't provide, if it's on PyPI as pure Python (e.g. plotly). lib and the paper's own modules are in PAPER_DIR.
+    const missing = pyodide.runPython(`
+import importlib.util
+[m for m in sorted({m.split(".")[0] for m in find_imports(code)})
+ if m != "lib" and importlib.util.find_spec(m) is None
+ and not os.path.exists(f"${PAPER_DIR}/{m}.py") and not os.path.isdir(f"${PAPER_DIR}/{m}")]
+`).toJs();
+    for (const name of missing) {
+        status(`Installing ${name} from PyPI…`);
+        pyodide.globals.set("name", name);
+        // If it can't be installed, running the figure code reports the ImportError
+        await pyodide.runPythonAsync("import micropip\ntry:\n    await micropip.install(name)\nexcept Exception:\n    pass");
+    }
 }
 
 // The ```python blocks inside <figure>s, which app.py runs

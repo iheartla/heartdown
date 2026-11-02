@@ -34,6 +34,7 @@ The Markdown processing is Python-Markdown with H❤️rtDown's extensions, in `
 - It groups the I❤️LA blocks of a paper by context (`❤: name`) and compiles each context with `compile_la_content(..., get_json=True)`. That returns the code for each output, plus the equation data: symbols, types, descriptions and dependencies.
 - It replaces each block with MacroMathJax that the paper's `paper.js` makes clickable.
 - It builds the glossary JSON (`iheartla_data`, `sym_data`).
+- Symbol descriptions come only from the author: a description after the type in a `where` block, or a `<span class="def:K">` or `<span class="def">` in the prose. A context's prose also describes the symbols of the other modules whose code is in that context. An imported symbol, or a module parameter and the argument bound to it, is the same symbol in both modules, so a description of either describes both. Descriptions aren't inferred from ordinary prose: on the gallery papers, a "$X$ is …" heuristic found definitions for 7 of 104 undescribed symbols, some of them wrong.
 - Compiles are cached by a hash of each context's code, so editing prose doesn't recompile.
 
 Figures are `<figure>`s that contain a ```` ```python ```` block. `iheartla_code` saves each block as `<image name>.py`. `app.py` copies the generated `lib.py` next to it and runs it. The script draws the figure's image.

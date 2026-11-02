@@ -46,5 +46,5 @@ class fairing:
         # L = D⁻¹ ( D - A )
         self.L = sparse.linalg.spsolve(self.D, (self.D - self.A))
         # `V'` = (L² + w diag(B))⁻¹ (w diag(B) V)
-        self.V_apostrophe = np.linalg.solve(((self.L)**(2) + self.w * np.diag(B)), (self.w * np.diag(B) @ V))
+        self.V_apostrophe = np.linalg.solve((sparse.linalg.matrix_power(self.L, 2) + self.w * np.diag(B)), (self.w * np.diag(B) @ V))
 

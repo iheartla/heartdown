@@ -22,7 +22,7 @@ RESOURCE_DIR = "heartdown-resource"
 # Compiles the paper argv[1] without running figure code
 COMPILE = """
 import logging, os, sys
-import app
+from heartdown import app
 from iheartla.la_tools.la_logger import LaLogger
 app.run_figure_script = lambda source, cwd: (True, '')
 LaLogger.getInstance().set_level(logging.ERROR)

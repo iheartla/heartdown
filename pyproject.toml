@@ -18,8 +18,8 @@ dependencies = [
 ]
 
 [project.scripts]
-heartdown = "app:main"
-heartdown-server = "server:main"
+heartdown = "heartdown.app:main"
+heartdown-server = "heartdown.server:main"
 
 [dependency-groups]
 dev = ["pytest"]
@@ -37,8 +37,14 @@ markdown = { path = "deps/markdown", editable = true }
 requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
+# The repository root is the heartdown package, with the resources that app.py and
+# server.py find next to them
 [tool.setuptools]
-py-modules = ["app", "server"]
+packages = ["heartdown"]
+package-dir = { heartdown = "." }
+
+[tool.setuptools.package-data]
+heartdown = ["extras/heartdown-resource/**/*", "docs/**/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

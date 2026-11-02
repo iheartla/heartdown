@@ -71,6 +71,12 @@ The paper can be a `.md` or `.txt` file, and `--paper` takes several. To share o
 
 writes `gallery_res/Judder/judder.html`, which loads `gallery_res/heartdown-resource/`. Figure code runs with this environment's Python, so add any packages it needs with `uv add`.
 
+Without a clone, uv can install H❤️rtDown and its submodules from GitHub and run it:
+
+    uvx --from git+https://github.com/iheartla/heartdown heartdown --paper path/to/paper.md
+
+`heartdown-server` in place of `heartdown` opens the editor on a paper, as `server.py` does. Add packages for figure code with `--with`, as in `uvx --with scikit-image --from ...`.
+
 ## Developing
 
 [Architecture.md](Architecture.md) describes how H❤️rtDown and the editor work.

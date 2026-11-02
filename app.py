@@ -11,6 +11,7 @@ import regex as re
 from textwrap import dedent
 import subprocess
 import sys
+STDLIB_RE = sys.modules['re']  # before iheartla replaces it with `regex`
 from iheartla.la_tools.la_helper import *
 from iheartla.la_tools.la_logger import LaLogger
 from iheartla.la_parser.parser import ParserTypeEnum, LaMsg
@@ -479,7 +480,14 @@ def main():
     arg_parser.add_argument('--resource_dir', help='resource path')
     arg_parser.add_argument('-o', '--output', help='The output language', choices=['numpy', 'eigen', 'latex','matlab'])
     arg_parser.add_argument('--paper', nargs='*', help='paper text')
-    args = arg_parser.parse_args()
+    # iheartla makes `import re` return `regex`, which breaks argparse's usage and error formatting
+    iheartla_re = sys.modules['re']
+    sys.modules['re'] = STDLIB_RE
+    try:
+        args = arg_parser.parse_args()
+    finally:
+        sys.modules['re'] = iheartla_re
+    failed = []
     resource_dir = args.resource_dir if args.resource_dir else '.'
     # print("args.paper is {}, resource_dir is {}".format(args.paper, resource_dir))
     if args.regenerate_grammar:
@@ -499,7 +507,7 @@ def main():
                 parser_type = parser_type | out_dict[out]
         else:
             parser_type = ParserTypeEnum.NUMPY | ParserTypeEnum.EIGEN | ParserTypeEnum.MATLAB
-        for paper_file in args.paper:
+        for paper_file in args.paper or []:
             content = read_from_file(paper_file)
             base_name = os.path.basename(Path(paper_file))
             if DEBUG_MODE:
@@ -507,20 +515,17 @@ def main():
             else:
                 try:
                     ret, figure_dict = process_input(content, os.path.dirname(os.path.abspath(paper_file)), resource_dir, os.path.splitext(base_name)[0], parser_type)
-                    msg = ''
                 except AssertionError as e:
                     err_msg = LaMsg.getInstance()
-                    msg = err_msg.cur_msg
-                    print("expr: {}".format(err_msg.cur_code.replace('\n', '')))
+                    print("{}: {}".format(paper_file, err_msg.cur_msg if err_msg.cur_msg else str(e)), file=sys.stderr)
+                    print("expr: {}".format(err_msg.cur_code.replace('\n', '')), file=sys.stderr)
+                    failed.append(paper_file)
                 except Exception as e:
-                    msg = "{}: {}".format(type(e).__name__, str(e))
-                except:
-                    msg = str(sys.exc_info()[0])
-                finally:
-                    pass
-                    # print("msg: {}".format(msg))
-            # print(html)
+                    print("{}: {}: {}".format(paper_file, type(e).__name__, str(e)), file=sys.stderr)
+                    failed.append(paper_file)
     record("End")
+    if failed:
+        sys.exit(1)
 
 
 if __name__ == '__main__':

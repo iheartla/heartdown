@@ -2,28 +2,25 @@
 
 H❤️rtDown is an authoring environment for linear algebra papers. The papers compile to interactive web pages and code libraries that can be used inline to create figures or in external code.
 
-The code for the SIGGRAPH Asia 2022 paper is at the tag [`SIGGRAPH_Asia_2022`](https://github.com/iheartla/heartdown/tree/SIGGRAPH_Asia_2022) (`git checkout SIGGRAPH_Asia_2022`); see the README there. That version compiles papers with a local Python server. The current version compiles them in the browser.
+The code for the [SIGGRAPH Asia 2022 paper](https://iheartla.github.io/heartdown/) is at the tag [`SIGGRAPH_Asia_2022`](https://github.com/iheartla/heartdown/tree/SIGGRAPH_Asia_2022) (`git checkout SIGGRAPH_Asia_2022`); see the README there. That version compiles papers with a local Python server. The current version compiles them in the browser.
 
 ## Running the editor
 
 The editor is a web page in `docs/`. H❤️rtDown, the I❤️LA compiler and the Python code of figures run in the browser with [Pyodide](https://pyodide.org), so there is nothing to install besides Python 3 for the small local server.
 
-Get the code:
+Get the code (no submodules needed; `docs/` has everything):
 
     git clone https://github.com/iheartla/heartdown.git
     cd heartdown
 
-(The editor doesn't need the submodules. `docs/` has everything it needs.)
+Serve `docs/` via GitHub Pages or:
 
-### On a paper on your computer
+    cd docs
+    python3 -m http.server
 
-    python3 server.py path/to/paper.md
+Served this way, the editor starts with an example paper, and you choose where papers are kept:
 
-This opens the editor in your browser (any browser) on that paper. Compiling and saving (Ctrl/⌘-S) write the paper and everything it generates into the paper's folder. If the paper doesn't exist yet, it is created from an example. Options: `--port` (default 8000) and `--no-browser`. `server.py` only needs Python's standard library.
-
-### Without a server of your own
-
-The editor also works from any web server that serves `docs/`, such as GitHub Pages or `cd docs && python3 -m http.server`. A plain file won't work, because the editor uses a service worker; opening `docs/index.html` directly fails. Served this way, the editor starts with an example paper, and you choose where papers are kept:
+### Loading examples
 
 - **Open folder** (Chrome and Edge) works on a paper's folder on your computer, reading and writing it directly. The editor offers to reopen the folder next time.
 - **Open files**, **Import folder** and drag-and-drop (any browser) copy a paper and its files into the browser's storage, where the editor keeps them. **Paper** downloads the `.md` file. **Zip** downloads the folder with everything it generated. **New** starts a new paper in the browser.
@@ -33,6 +30,12 @@ The editor also works from any web server that serves `docs/`, such as GitHub Pa
   - a zip of the paper's folder.
 
   For example, `https://<editor>/?paper=https://iheartla.github.io/heartdown/CaseStudies/static/gallery_res/Judder/judder.txt`. The paper's server must allow other sites to load it (CORS), as GitHub Pages does. Compiling a paper runs its figure code in your browser, so compile only papers you trust.
+
+### On a paper on your computer
+
+    python3 server.py path/to/paper.md
+
+This opens the editor in your browser (any browser) on that paper. Compiling and saving (Ctrl/⌘-S) write the paper and everything it generates into the paper's folder. If the paper doesn't exist yet, it is created from an example. Options: `--port` (default 8000) and `--no-browser`. `server.py` only needs Python's standard library.
 
 ### Using the editor
 

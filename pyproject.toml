@@ -21,6 +21,9 @@ dependencies = [
 heartdown = "app:main"
 heartdown-server = "server:main"
 
+[dependency-groups]
+dev = ["pytest"]
+
 [project.urls]
 Homepage = "https://github.com/iheartla/heartdown"
 
@@ -34,3 +37,6 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 py-modules = ["app", "server"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

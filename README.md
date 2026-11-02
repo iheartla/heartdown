@@ -82,6 +82,10 @@ The submodules in `deps/` are H❤️rtDown's two main dependencies, and uv inst
 
 Changes to either take effect immediately. Commit them in the submodule, then commit the submodule's new version here.
 
+To check that a change doesn't change the compiler's output, run the tests ([tests/README.md](tests/README.md)), which compile a corpus of papers:
+
+    uv run pytest
+
 `docs/` holds copies of the Python code and of Pyodide. After changing `app.py` or a submodule, rebuild the copy of the Python code:
 
     sh docs/update_python.sh     # writes docs/heartdown-py.zip

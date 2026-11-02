@@ -1,0 +1,17 @@
+w=10^6
+A_ij = { 1 if (i,j) ∈ E
+         1 if (j,i) ∈ E
+         0 otherwise
+D_ii = ∑_j A_ij
+L = D⁻¹ ( D - A )
+where
+E ∈ { ℤ×ℤ } index
+A ∈ ℝ^(n×n): The adjacency matrix
+n ∈ ℤ: The number of mesh vertices
+
+diag from linearalgebra
+
+`V'` = (L³ + w diag(B))⁻¹ (w diag(B) V)
+where
+B ∈ ℤ^n
+V ∈ ℝ^(n × 3)

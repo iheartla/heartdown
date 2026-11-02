@@ -83,7 +83,7 @@ Without a clone, uv can install H❤️rtDown and its submodules from GitHub and
 
 The submodules in `deps/` are H❤️rtDown's two main dependencies, and uv installs them from there in editable mode:
 
-- `deps/iheartla`: the I❤️LA compiler, on its `mesh` branch.
+- `deps/iheartla`: the I❤️LA compiler, on its `main` branch.
 - `deps/markdown`: H❤️rtDown's fork of Python-Markdown, on its `heartdown` branch.
 
 Changes to either take effect immediately. Commit them in the submodule, then commit the submodule's new version here.

@@ -96,9 +96,9 @@ js/heartdown-worker.js      (disk or IndexedDB)         │ GET paper/<session>/
 - With the Python compiler, a plain paper compiles in 0.4–3 s on first load and in 0.1 s after that, thanks to the per-context cache.
 - `app.compile_paper()` is the seam for a later switch: a Rust compiler that exports the same equation data could replace `compile_la_content` in `iheartla_code`.
 
-**The `iheartla` submodule tracks the `mesh` branch.**
-- Its Python compiler is identical to the `rust` branch's (`rust` adds the Rust compiler), and it is the branch where the Python compiler is developed.
-- The newer compiler broke 6 of the 14 gallery papers. The fixes are committed on `mesh` (see its log): sum scopes in the equation data, `.ihla` module lookup, empty names, multiple imports from one package, symbol keywords such as `π` beginning a name (`π𝑑` is π times 𝑑), and subscripted function parameters. A parameter `D_i: ℝ^3 -> ℝ` is now a function of its subscript too (`D_i(u_i)` calls `D(i, u_i)`), as subscripted local functions already were; sequences of functions are no longer in the language. Three bugs in the generated code are fixed there too: function parameters called in local functions, parameters mistaken for another local function's, and misplaced comments.
+**The `iheartla` submodule tracks the `main` branch.**
+- `main` contains the `mesh` branch, where the Python compiler was developed.
+- The newer compiler broke 6 of the 14 gallery papers. The fixes were committed on `mesh` (see its log): sum scopes in the equation data, `.ihla` module lookup, empty names, multiple imports from one package, symbol keywords such as `π` beginning a name (`π𝑑` is π times 𝑑), and subscripted function parameters. A parameter `D_i: ℝ^3 -> ℝ` is now a function of its subscript too (`D_i(u_i)` calls `D(i, u_i)`), as subscripted local functions already were; sequences of functions are no longer in the language. Three bugs in the generated code are fixed there too: function parameters called in local functions, parameters mistaken for another local function's, and misplaced comments.
 
 **The `markdown` submodule is H❤️rtDown's fork, rebased onto upstream Python-Markdown 3.11.2.**
 - The fork was Python-Markdown 3.3.4 plus about 170 H❤️rtDown commits. Its `heartdown` branch replays those commits onto 3.11.2 and ports the extensions to the 3.4+ API.

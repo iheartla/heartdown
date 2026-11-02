@@ -1133,21 +1133,43 @@ function checkDesc(){
   }
   if (showBlick) {
     if (typeof parent.showMsg == 'function') { 
-      msg = `Missing descriptions for symbols: <br>`
+      // Collapsible; the editor remembers whether it was open across compiles
+      if (parent.undescribedOpen === undefined) {
+        parent.undescribedOpen = true;
+      }
+      let count = 0;
+      let lines = '';
       for(var eq in iheartla_data.equations){
         if (iheartla_data.equations[eq].undesc_list.length > 0) {
           let cur_undesc = [];
           for (var index in iheartla_data.equations[eq].undesc_list) {
-            cur_undesc.push(`$${iheartla_data.equations[eq].undesc_list[index]}$`);
+            cur_undesc.push(`$${undescribedTex(iheartla_data.equations[eq].undesc_list[index])}$`);
           }
-          msg += `${iheartla_data.equations[eq].name}: ${cur_undesc.join(', ')}<br>`
+          count += cur_undesc.length;
+          lines += `<div>${iheartla_data.equations[eq].name}: ${cur_undesc.join(', ')}</div>`
         }
       }
+      msg = `<details ${parent.undescribedOpen ? 'open' : ''} ontoggle="undescribedOpen = this.open">` +
+            `<summary style="cursor: pointer">Missing descriptions for ${count} symbol${count == 1 ? '' : 's'}</summary>` +
+            `<div style="max-height: 40vh; overflow-y: auto">${lines}</div></details>`;
       // console.log(`show msg: ${msg}`)
       parent.showMsg(msg, true);
     }
     // setTimeout(removeBlinkClass, 3000);
   }
+}
+// LaTeX symbols come as $\textbf{X}$ (with escaped backslashes) and multi-letter ones as `name`: TeX to go inside $...$
+function undescribedTex(sym){
+  sym = sym.replaceAll("\\\\", "\\");
+  let m = sym.match(/^`?\$(.*)\$`?$/s);
+  if (m) {
+    return m[1];
+  }
+  m = sym.match(/^`(.*)`$/s);
+  if (m) {
+    return `\\mathit{${m[1]}}`;
+  }
+  return sym;
 }
 function isUndescribed(context, sym){
   if (isIndependentMode()) { 

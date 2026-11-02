@@ -322,6 +322,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "appdirs" },
+    { name = "autograd", marker = "extra == 'test'" },
     { name = "cppyy", marker = "extra == 'test'" },
     { name = "graphviz", marker = "extra == 'viz'" },
     { name = "numpy", marker = "extra == 'test'" },

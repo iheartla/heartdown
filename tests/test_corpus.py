@@ -31,26 +31,9 @@ with open(paper, encoding='utf-8') as f:
     app.process_input(f.read(), os.path.dirname(paper), file_name=os.path.splitext(os.path.basename(paper))[0])
 """
 
-# Papers that don't compile yet: path in the corpus: reason
-MIN_VARIABLE = "KeyError: the variable of a min_ is not in the symbol table (iheartla_code.py get_sym_dict)"
+# Papers that don't compile yet: path in the corpus: reason. Their tests check that they still don't.
 KNOWN_FAILURES = {
-    "heartdown_examples_simple/example-clustering/l1/clustering.md": MIN_VARIABLE,
-    "heartdown_examples_simple/example-clustering/l2/clustering.md": MIN_VARIABLE,
-    "heartdown_examples_simple/example-clustering/l2-weighted/clustering.md": MIN_VARIABLE,
-    "heartdown_examples_simple/example-smoothing/base/smoothing.md": MIN_VARIABLE,
-    "heartdown_examples_simple/example-smoothing/modified/smoothing.md": MIN_VARIABLE,
 }
-
-
-def corpus_papers():
-    params = []
-    for paper in sorted(CORPUS_DIR.rglob("*.md")):
-        name = paper.relative_to(CORPUS_DIR).as_posix()
-        marks = []
-        if name in KNOWN_FAILURES:
-            marks.append(pytest.mark.xfail(reason=KNOWN_FAILURES[name], strict=True))
-        params.append(pytest.param(name, id=name, marks=marks))
-    return params
 
 
 def list_files(folder, skip=()):
@@ -68,21 +51,23 @@ def list_files(folder, skip=()):
 
 def compile_paper(paper, work_dir):
     """
-    Compile a copy of a corpus paper in work_dir, in a new Python with a fixed hash seed:
-    the compiler's output depends on the order of sets of strings
+    Compile a copy of a corpus paper in work_dir, in a new Python, so that papers don't share the compiler's state
     :return: {path relative to the paper: bytes} of the files the compiler wrote
     """
     paper_dir = work_dir / "paper"
     shutil.copytree((CORPUS_DIR / paper).parent, paper_dir)
     inputs = list_files(paper_dir)
     ret = subprocess.run([sys.executable, "-c", COMPILE, str(paper_dir / Path(paper).name)],
-                         env=dict(os.environ, PYTHONHASHSEED="0"), capture_output=True, text=True)
+                         capture_output=True, text=True)
+    if paper in KNOWN_FAILURES:
+        assert ret.returncode != 0, "compiles now; remove it from KNOWN_FAILURES and save its expected output"
+        pytest.xfail(KNOWN_FAILURES[paper])
     assert ret.returncode == 0, ret.stderr
     outputs = list_files(paper_dir, skip=(RESOURCE_DIR,))
     return {path: content for path, content in outputs.items() if inputs.get(path) != content}
 
 
-@pytest.mark.parametrize("paper", corpus_papers())
+@pytest.mark.parametrize("paper", sorted(paper.relative_to(CORPUS_DIR).as_posix() for paper in CORPUS_DIR.rglob("*.md")))
 def test_paper(paper, tmp_path, request):
     outputs = compile_paper(paper, tmp_path)
     expected_dir = EXPECTED_DIR / Path(paper).parent

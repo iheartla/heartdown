@@ -8,7 +8,7 @@ When a change to the compiler changes its output on purpose, check the diffs, th
 
     uv run pytest --update-expected
 
-Papers that don't compile yet are in `KNOWN_FAILURES` in `test_corpus.py`. Once one compiles, its test fails until it's removed from there and its expected output is saved.
+A paper that doesn't compile yet can go in `KNOWN_FAILURES` in `test_corpus.py`. Its test checks that it still fails to compile, so once it compiles, the test fails until it's removed from there and its expected output is saved.
 
 ## The corpus
 

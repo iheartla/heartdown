@@ -1,0 +1,4 @@
+min_( c ∈ ℝ^m ) ∑_i w_i ‖ y_i - c ‖^2
+where
+y_i ∈ ℝ^m
+w_i ∈ ℝ

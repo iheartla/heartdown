@@ -1,0 +1,9 @@
+`E_\text{data}`(U) = ‖ U - V ‖² where U ∈ ℝ^(n×3)
+`E_\text{smoothness}`(U) = trace( Uᵀ L U ) where U ∈ ℝ^(n×3)
+trace from linearalgebra
+
+min_( U ∈ ℝ^(n×3) ) `E_\text{data}`(U) + λ `E_\text{smoothness}`(U)
+where
+V ∈ ℝ^(n×3): The vertices of the mesh
+L ∈ ℝ^(n×n) sparse: The Laplacian matrix
+λ ∈ ℝ

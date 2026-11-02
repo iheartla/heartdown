@@ -7,6 +7,7 @@ import argparse
 import os.path
 from pathlib import Path
 import shutil
+import filecmp
 import regex as re
 from textwrap import dedent
 import subprocess
@@ -66,6 +67,17 @@ def run_figure_script(source, cwd):
             sys.modules['matplotlib.pyplot'].close('all')
         sys.path.remove(cwd)
         os.chdir(old_cwd)
+
+def update_resources(dst):
+    """
+    Copy extras/heartdown-resource to dst, replacing only the files that differ (left from an older H❤️rtDown)
+    """
+    def copy_if_changed(src, dst):
+        if not (os.path.exists(dst) and filecmp.cmp(src, dst, shallow=False)):
+            shutil.copy2(src, dst)
+        return dst
+    shutil.copytree(os.path.join(APP_DIR, "extras", "heartdown-resource"), dst,
+                    copy_function=copy_if_changed, dirs_exist_ok=True)
 
 def handle_title(text, dict):
     content = ''
@@ -338,8 +350,7 @@ def process_input(content, input_dir='.', resource_dir='.', file_name='result',
         sym_json = md.json_sym
         # where the page looks for it: resource_dir is relative to the paper
         dst = os.path.join(input_dir, resource_dir, "heartdown-resource")
-        if not os.path.exists(dst):
-            shutil.copytree(os.path.join(APP_DIR, "extras", "heartdown-resource"), dst)
+        update_resources(dst)
         script = r"""window.onload = onLoad;
         function reportWindowSize() {
           var arrows = document.querySelectorAll(".arrow");

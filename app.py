@@ -473,13 +473,12 @@ def run_figure(name, source, input_dir):
 
 
 def main():
-    # LaLogger.getInstance().set_level(logging.DEBUG if DEBUG_MODE else logging.ERROR)
-    LaLogger.getInstance().set_level(logging.ERROR)
     arg_parser = argparse.ArgumentParser(description='HeartDown paper compiler')
     arg_parser.add_argument('--regenerate-grammar', action='store_true', help='Regenerate grammar files')
     arg_parser.add_argument('--resource_dir', help='resource path')
     arg_parser.add_argument('-o', '--output', help='The output language', choices=['numpy', 'eigen', 'latex','matlab'])
     arg_parser.add_argument('--paper', nargs='*', help='paper text')
+    arg_parser.add_argument('-q', '--quiet', action='store_true', help='Hide warnings (such as undescribed symbols)')
     # iheartla makes `import re` return `regex`, which breaks argparse's usage and error formatting
     iheartla_re = sys.modules['re']
     sys.modules['re'] = STDLIB_RE
@@ -487,6 +486,8 @@ def main():
         args = arg_parser.parse_args()
     finally:
         sys.modules['re'] = iheartla_re
+    # LaLogger.getInstance().set_level(logging.DEBUG if DEBUG_MODE else logging.ERROR)
+    LaLogger.getInstance().set_level(logging.ERROR if args.quiet else logging.WARNING)
     failed = []
     resource_dir = args.resource_dir if args.resource_dir else '.'
     # print("args.paper is {}, resource_dir is {}".format(args.paper, resource_dir))

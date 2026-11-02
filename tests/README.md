@@ -18,3 +18,11 @@ The `.md` and `.bib` files of the papers in
 - `corpus/paper_md/`: the `papers/` folder of <https://github.com/iheartla/paper_md> at 2aa0ba1
 
 without the images, PDFs and generated files.
+
+## The editor's demos
+
+`test_browser.py` opens each demo in the in-browser editor's Demos menu (`docs/examples/demos.json`), compiles it and checks that it and its figures succeed, in headless Google Chrome. It tests what only the editor does: the compiler in Pyodide, figure code with Pyodide's packages (some from its CDN or PyPI), and the Demos menu fetching papers and their files. It doesn't compare the output with expected files.
+
+It needs Google Chrome and a network connection and takes a few minutes, so it runs only with `--browser`:
+
+    uv run --group browser pytest --browser tests/test_browser.py

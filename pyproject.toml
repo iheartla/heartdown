@@ -23,6 +23,8 @@ heartdown-server = "server:main"
 
 [dependency-groups]
 dev = ["pytest"]
+# for tests/test_browser.py, with Google Chrome
+browser = ["playwright"]
 
 [project.urls]
 Homepage = "https://github.com/iheartla/heartdown"

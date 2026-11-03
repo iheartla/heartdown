@@ -31,6 +31,9 @@ IMAGE_BLOCK_RE = re.compile(
     dedent(r'''<img\ (?P<before>[^\n>]*)src=(?P<quote>"|')(?P<src>[^\n'">]*)(?P=quote)(?P<after>[^\n>]*)>'''),
     re.MULTILINE | re.DOTALL | re.VERBOSE
 )
+# The height an <img> of an HTML figure gives its iframe: <img src='figure.html' height='900'>
+IMAGE_HEIGHT_RE = re.compile(r'''\bheight=(?P<quote>"|'|)(?P<height>\d+)(?P=quote)''')
+FIGURE_HEIGHT = 525
 cached_figure_dict = {}
 cached_figure_code = {}
 # In Pyodide (the browser), there are no subprocesses or threads
@@ -277,7 +280,9 @@ def handle_figure(text, name_list, input_dir, md):
                 threads_list.append(threading.Thread(target=gen_figure, args=(source, name, input_dir, figure_dict, figure_code, lib_changed)))
                 pre_tag = """<pre class="errorMsg" hidden></pre>"""
                 if suffix == 'html':
-                    new_c = """<iframe id="{}" scrolling="no" style="border:none;" seamless="seamless" src="{}/{}.html" height="525" width="100%"></iframe>""".format(name, path, name)
+                    height = IMAGE_HEIGHT_RE.search(img.group('before') + ' ' + img.group('after'))
+                    height = height.group('height') if height else FIGURE_HEIGHT
+                    new_c = """<iframe id="{}" scrolling="no" style="border:none;" seamless="seamless" src="{}/{}.html" height="{}" width="100%"></iframe>""".format(name, path, name, height)
                     new_figure = "<figure{}>".format(m.group('property'))
                     new_figure += pre_tag + figure[:img.start()] + new_c + figure[img.end():]
                     new_figure += "</figure>"

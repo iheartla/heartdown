@@ -51,6 +51,8 @@ A paper is a Markdown file (`.md`) in a folder, next to the files it uses: a `.b
 - `output_code/lib.py`, `lib.h`, `lib.m`: the paper's code in NumPy, C++/Eigen and MATLAB.
 - The figures, and each figure's code (`<figure>.py`).
 
+A figure whose code writes an HTML file (such as a plotly figure) shows in a frame 525 pixels tall. Give its `<img>` a height for a different one: `<img src="figure.html" height="900">`.
+
 **Code** downloads the generated code (`lib.py`, `lib.h` or `lib.m`, or all three), the same code the command line generates.
 
 The first compile of a paper with figure code takes a few seconds longer, because it loads NumPy, SciPy and Matplotlib. If figure code imports other packages that Pyodide provides, such as scikit-image, they load from the Pyodide CDN. Packages Pyodide doesn't provide, such as plotly or libigl (`import igl`), install from PyPI if they're pure Python or have a WebAssembly wheel. Both need a network connection. A figure can also need a package it doesn't import by that name, a particular version, or a package that only its own modules import. List those PyPI requirements in the paper's YAML front matter, and the editor installs them before running the figures:

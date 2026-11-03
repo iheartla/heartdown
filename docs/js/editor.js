@@ -85,6 +85,8 @@ async function ask(request) {
     for (const [path, bytes] of Object.entries(reply.written)) {
         await project.write(path, bytes, true);
     }
+    // which files compiling made (Share leaves them out), for next time. (server.py's paper isn't remembered.)
+    if (Object.keys(reply.written).length > 0 && project.mode !== "local") await project.remember();
     return reply.result;
 }
 
@@ -128,6 +130,8 @@ async function onLoad(){
         confirm("You've edited the paper kept in this browser. Replace it with the one in this link?");
     if (linked && linked.url !== undefined && replaceRestored()) {
         await openPaperURL(linked.url, restored);
+    } else if (linked && linked.files !== undefined && replaceRestored()) {
+        await openSharedPaper(linked);
     } else if (linked && linked.text !== undefined &&
                (restored && !restored.reopen && restored.mode === "browser" &&
                 restored.readText(restored.mdPath) === linked.text || replaceRestored())) {
@@ -148,8 +152,11 @@ async function onLoad(){
     }
 }
 
-// The paper in the link, or null: {url} for ?paper=<url> (a data: URL too), or {text} for the paper's text,
-// from Share (#z=<the text, compressed>) or ?code=<the text> (older links), or {error} if it can't be read.
+// The paper in the link, or null:
+//   {files, mdPath, base} from Share (#zip=<the files, zipped and compressed>&md=<the paper's path>[&base=<url>]),
+//   {url} for ?paper=<url> (a data: URL too),
+//   {text} for the paper's text from older links: #z=<the text, compressed> or ?code=<the text>,
+//   or {error} if it can't be read.
 // Each may be in the query (?) or the fragment (#).
 async function linkedPaper() {
     const url = new URL(window.location.href);
@@ -157,11 +164,22 @@ async function linkedPaper() {
     for (const [key, value] of url.searchParams) {
         if (!params.has(key)) params.set(key, value);
     }
+    const damaged = (e) => ({ error: "The link's paper is damaged (it may have been cut off): " + e.message });
+    if (params.has("zip")) {
+        try {
+            const files = await unzip(await decompressBytes(params.get("zip")));
+            const mdPath = params.get("md");
+            if (!files.has(mdPath)) throw new Error(`it has no ${mdPath}`);
+            return { files, mdPath, base: params.get("base") };
+        } catch (e) {
+            return damaged(e);
+        }
+    }
     if (params.has("z")) {
         try {
-            return { text: await decompressText(params.get("z")) };
+            return { text: decoder.decode(await decompressBytes(params.get("z"))) };
         } catch (e) {
-            return { error: "The link's paper is damaged (it may have been cut off): " + e.message };
+            return damaged(e);
         }
     }
     if (params.has("code")) return { text: params.get("code") };
@@ -183,17 +201,28 @@ async function openHashLink() {
         showMsg(escapeHtml(linked.error), true);
     } else if (linked.url !== undefined) {
         await openPaperURL(linked.url);
+    } else if (linked.files !== undefined) {
+        await openSharedPaper(linked);
     } else {
         await openPaperText(linked.text);
     }
+}
+
+const TRUST = "Compiling runs the paper's figure code in your browser, so compile only papers you trust.";
+
+// A new browser paper with the files in a Share link
+async function openSharedPaper({ files, mdPath, base }) {
+    if (base !== null) showMsg(`Loading the paper's other files from ${escapeHtml(base)}…`, false, true);
+    await setProject(await openSharedProject(files, mdPath, base));
+    forgetLink();
+    showMsg(`Loaded the paper in the link. ${TRUST}`, false, true);
 }
 
 // A new browser paper with this text, from a link
 async function openPaperText(text) {
     await setProject(await newBrowserProject("paper.md", text));
     forgetLink();
-    showMsg("Loaded the paper in the link. Compiling runs the paper's figure code in your browser, so compile only papers you trust.",
-            false, true);
+    showMsg(`Loaded the paper in the link. ${TRUST}`, false, true);
 }
 
 // Switch to another paper folder
@@ -280,6 +309,9 @@ function forgetLink() {
     url.searchParams.delete("paper");
     url.searchParams.delete("code");
     url.searchParams.delete("z");
+    url.searchParams.delete("zip");
+    url.searchParams.delete("md");
+    url.searchParams.delete("base");
     url.hash = "";
     history.replaceState(null, "", url);
 }
@@ -379,6 +411,7 @@ async function clickReopenFolder() {
         if (opened) {
             const meta = await idb("meta", "readonly", store => store.get("project"));
             opened.mdPath = meta ? meta.mdPath : null;
+            opened.restoreMarks(meta);
             await setProject(opened);
         }
     } catch (e) {
@@ -688,38 +721,79 @@ function onClickFigure(ele, name){
     $('#testEditor').modal('show');
 }
 
-// Copy a link to the editor with the paper's text in it, compressed, in the fragment (#z=), which
-// isn't sent to the server: no limit on its length but the browser's, and the server doesn't see the paper
+// The longest Share link that puts in files other than text. Links much longer than this may not survive
+// being pasted into messages, and Chrome takes at most 2 MB.
+const SHARE_LIMIT = 200000;
+
+// Copy a link to the editor with the paper and the files its author made (not the ones compiling makes), zipped
+// and compressed, in the fragment (#zip=), which isn't sent to the server. Text files always go in; other files
+// (images) go in, smallest first, while the link stays under SHARE_LIMIT. For a paper from a URL, the link also
+// has that URL (base=), where the files it leaves out come from.
 async function clickShare() {
-    const url = new URL(window.location.href);
-    url.search = "";
-    url.hash = "z=" + await compressText(ace.edit("editor").getValue());
-    const link = url.href;
-    const others = project !== null && project.files.size > 1 ? " It has only the paper's text, not its other files." : "";
+    if (project === null) return;
+    await savePaper();
+    const strict = new TextDecoder("utf-8", { fatal: true });
+    const isText = (bytes) => { try { strict.decode(bytes); return true; } catch (e) { return false; } };
+    const own = [...project.ownFiles()].filter(([path]) => path !== project.mdPath);
+    const text = own.filter(([, bytes]) => isText(bytes));
+    const other = own.filter(([, bytes]) => !isText(bytes)).sort((a, b) => a[1].length - b[1].length);
+    const files = new Map([[project.mdPath, project.read(project.mdPath)], ...text]);
+    const base = project.baseURL !== null && /^https?:/.test(project.baseURL) ? project.baseURL : null;
+    const linkTo = async (files) => {
+        const url = new URL(window.location.href);
+        url.search = "";
+        const params = new URLSearchParams({ md: project.mdPath });
+        if (base !== null) params.set("base", base);
+        url.hash = `zip=${await compressBytes(new Uint8Array(await zipFiles(files).arrayBuffer()))}&${params}`;
+        return url.href;
+    };
+    let link = await linkTo(files);
+    const left = [];
+    for (const [path, bytes] of other) {
+        // binary files barely compress: a third more than their size in base64
+        if (link.length + bytes.length * 4 / 3 > SHARE_LIMIT) {
+            left.push(path);
+            continue;
+        }
+        files.set(path, bytes);
+        const longer = await linkTo(files);
+        if (longer.length > SHARE_LIMIT) {
+            files.delete(path);
+            left.push(path);
+        } else {
+            link = longer;
+        }
+    }
+    const size = link.length < 10000 ? `${link.length} characters` : `${Math.round(link.length / 1000)} KB`;
+    let note = `It has ${files.size === 1 ? "the paper" : `the paper and ${files.size - 1} other file${files.size > 2 ? "s" : ""}`} (${size}).`;
+    if (left.length > 0) {
+        note += ` It leaves out ${left.join(", ")}, as the link would be too long` +
+                (base !== null ? `; they come from ${base} if they're there.` : ".");
+    }
     try {
         await navigator.clipboard.writeText(link);
-        showMsg(`Copied a link to this paper to the clipboard.${others}`);
+        showMsg(escapeHtml(`Copied a link to this paper to the clipboard. ${note}`), false, left.length > 0);
     } catch (e) {
-        prompt(`Copy this link to the paper.${others}`, link);
+        prompt(`Copy this link to the paper. ${note}`, link);
     }
 }
 
-// text, deflated, in base64url
-async function compressText(text) {
-    const stream = new Blob([encoder.encode(text)]).stream().pipeThrough(new CompressionStream("deflate-raw"));
-    const bytes = new Uint8Array(await new Response(stream).arrayBuffer());
+// bytes, deflated, in base64url
+async function compressBytes(bytes) {
+    const stream = new Blob([bytes]).stream().pipeThrough(new CompressionStream("deflate-raw"));
+    const compressed = new Uint8Array(await new Response(stream).arrayBuffer());
     let binary = "";
-    for (let i = 0; i < bytes.length; i += 0x8000) {
-        binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    for (let i = 0; i < compressed.length; i += 0x8000) {
+        binary += String.fromCharCode(...compressed.subarray(i, i + 0x8000));
     }
     return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
-async function decompressText(base64url) {
+async function decompressBytes(base64url) {
     const binary = atob(base64url.replace(/-/g, "+").replace(/_/g, "/"));
     const bytes = Uint8Array.from(binary, c => c.charCodeAt(0));
     const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
-    return decoder.decode(await new Response(stream).arrayBuffer());
+    return new Uint8Array(await new Response(stream).arrayBuffer());
 }
 
 // msg is HTML: escape text from elsewhere (escapeHtml). A sticky notice stays until the next message or edit.

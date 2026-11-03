@@ -15,6 +15,7 @@ import http.server
 import json
 import threading
 import urllib.parse
+import zlib
 from pathlib import Path
 
 import pytest
@@ -206,7 +207,7 @@ def test_share(page):
     page.evaluate("text => ace.edit('editor').setValue(text, -1)", text)
     page.evaluate("clickShare()")
     link = page.evaluate("navigator.clipboard.readText()")
-    assert "#z=" in link and "?" not in link
+    assert "#zip=" in link and "?" not in link
     assert len(link) < len(text) / 3
     page.evaluate("ace.edit('editor').setValue('', -1)")
     # pasted into this page's address bar: only the fragment changes
@@ -219,6 +220,93 @@ def test_share(page):
     wait_for_paper(page, text)
     assert "#" not in page.url
     page.close()
+
+
+def test_text_link(editor):
+    # Share's links before they had the paper's files: the text, deflated, in base64url
+    deflate = zlib.compressobj(9, zlib.DEFLATED, -15)
+    z = base64.urlsafe_b64encode(deflate.compress(LINK_PAPER.encode()) + deflate.flush()).decode().rstrip("=")
+    page = editor("#z=" + z)
+    wait_for_paper(page, LINK_PAPER)
+
+
+def share(page):
+    """
+    :return: the link Share copies, and its message
+    """
+    page.evaluate("navigator.clipboard.writeText('')")
+    page.evaluate("clickShare()")
+    return page.evaluate("navigator.clipboard.readText()"), page.evaluate("document.getElementById('msg').textContent")
+
+
+def open_link(page, link, text):
+    """
+    Open link in a new page of the browser
+    :return: the page, once it has the paper, whose text is text
+    """
+    page = page.context.new_page()
+    page.on("dialog", lambda dialog: dialog.accept())
+    page.goto(link)
+    wait_for_paper(page, text)
+    return page
+
+
+def project_files(page):
+    return page.evaluate("Object.fromEntries([...project.files].map(([path, bytes]) => [path, bytes.length]))")
+
+
+def test_share_files(page):
+    # The paper, a module, a small image, an image too big for a link, and what compiling made
+    page.evaluate("""async text => {
+        // (random: doesn't compress, as an image doesn't. getRandomValues fills 64 KB at most.)
+        const random = (n) => {
+            const bytes = new Uint8Array(n);
+            for (let i = 0; i < n; i += 65536) crypto.getRandomValues(bytes.subarray(i, i + 65536));
+            return bytes;
+        };
+        const files = new Map([["paper.md", new TextEncoder().encode(text)],
+                               ["shape.py", new TextEncoder().encode("SIDES = 3\\n")],
+                               ["small.png", random(20000)], ["big.png", random(300000)]]);
+        await setProject(await openSharedProject(files, "paper.md"));
+        await project.write("figure.png", random(1000), true);
+        await project.write("heartdown-resource/paper.js", new TextEncoder().encode("// made by compiling"));
+    }""", LINK_PAPER)
+    link, msg = share(page)
+    assert "base=" not in link and len(link) < 50000
+    assert "leaves out big.png" in msg
+    shared = open_link(page, link, LINK_PAPER)
+    assert project_files(shared) == {"paper.md": len(LINK_PAPER.encode()), "shape.py": 10, "small.png": 20000}
+    shared.close()
+
+
+def test_share_demo(page):
+    # A paper from a URL: the link has its URL, where its image comes from
+    page.evaluate("clickDemos()")
+    page.get_by_role("button", name="Image filtering with a box filter", exact=True).click()
+    page.wait_for_function("document.getElementById('msg').textContent.includes('Loaded the demo')", timeout=LOAD_TIMEOUT)
+    text = page.evaluate("ace.edit('editor').getValue()")
+    link, msg = share(page)
+    assert "base=" in link and len(link) < 5000
+    shared = open_link(page, link, text)
+    shared.wait_for_function("project.files.has('wikipedia.png')", timeout=LOAD_TIMEOUT)
+    shared.wait_for_function("typeof workerReady !== 'undefined' && workerReady", timeout=LOAD_TIMEOUT)
+    shared.evaluate("""() => {
+        const ask_worker = ask;
+        window.ask = async (request) => {
+            const data = await ask_worker(request);
+            if (request.type === "compile") window.lastCompile = data;
+            return data;
+        };
+        window.lastCompile = null;
+    }""")
+    shared.evaluate("clickCompile()")
+    shared.wait_for_function("window.lastCompile !== null && !compiling", timeout=COMPILE_TIMEOUT, polling=500)
+    data = shared.evaluate("window.lastCompile")
+    assert data["ret"] == 0 and not data.get("fig"), data
+    # what compiling made isn't shared
+    link, msg = share(shared)
+    assert "base=" in link and len(link) < 5000
+    shared.close()
 
 
 def test_damaged_link(editor):

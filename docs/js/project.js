@@ -50,6 +50,10 @@ class Project {
         // Whether the paper was changed here since it was created or loaded: replacing a browser
         // paper loses only that (null: unknown, kept by an older version of the editor)
         this.edited = false;
+        // Files the paper's author didn't make, which Share leaves out: written by compiling, or fetched
+        // unchanged from baseURL. Kept with the paper (remember) in the browser.
+        this.generated = new Set();
+        this.fetched = new Set();
         // Paths changed or removed here since the worker last got them
         this.changed = new Set(files.keys());
         this.removed = new Set();
@@ -79,11 +83,16 @@ class Project {
         return bytes === undefined ? undefined : decoder.decode(bytes);
     }
 
-    // fromWorker: the file came from the worker, which already has it
-    async write(path, data, fromWorker = false) {
+    // fromWorker: the file came from the worker, which already has it (compiling made it).
+    // fetched: the file came from baseURL as it is there.
+    async write(path, data, fromWorker = false, fetched = false) {
         const bytes = typeof data === "string" ? encoder.encode(data) : data;
         const edited = !fromWorker && path === this.mdPath && !this.edited && this.readText(path) !== decoder.decode(bytes);
         this.files.set(path, bytes);
+        if (fromWorker) this.generated.add(path);
+        else this.generated.delete(path);
+        if (fetched) this.fetched.add(path);
+        else this.fetched.delete(path);
         if (!fromWorker) this.changed.add(path);
         this.removed.delete(path);
         if (this.mode === "folder") {
@@ -125,7 +134,24 @@ class Project {
     async remember() {
         await idb("meta", "readwrite", store => store.put(
             { mode: this.mode, name: this.name, mdPath: this.mdPath, handle: this.handle, baseURL: this.baseURL,
-              edited: this.edited }, "project"));
+              edited: this.edited, generated: [...this.generated], fetched: [...this.fetched] }, "project"));
+    }
+
+    // What compiling generates, by its name, for a folder compiled before it was opened here
+    isGenerated(path) {
+        return this.generated.has(path) || path.startsWith("heartdown-resource/") || path.startsWith("output_code/") ||
+               this.mdPath !== null && path === this.mdPath.replace(/\.[^./]*$/, "") + ".html";
+    }
+
+    // The files the paper's author made: what Share puts in a link
+    ownFiles() {
+        return new Map([...this.files].filter(([path]) => !this.isGenerated(path) && !this.fetched.has(path)));
+    }
+
+    // The marks kept with the paper last time (remember)
+    restoreMarks(meta) {
+        this.generated = new Set((meta && meta.generated) || []);
+        this.fetched = new Set((meta && meta.fetched) || []);
     }
 }
 
@@ -240,6 +266,7 @@ async function restoreProject() {
         if (await meta.handle.queryPermission({ mode: "readwrite" }) === "granted") {
             const project = await openFolderProject(meta.handle);
             project.mdPath = meta.mdPath;
+            project.restoreMarks(meta);
             return project;
         }
         return { reopen: meta.handle, mdPath: meta.mdPath };
@@ -258,6 +285,7 @@ async function restoreProject() {
     project.mdPath = meta.mdPath;
     project.baseURL = meta.baseURL || null;
     project.edited = meta.edited === undefined ? null : meta.edited;
+    project.restoreMarks(meta);
     return project;
 }
 
@@ -277,8 +305,10 @@ function serveProjectFiles(getProject) {
             return;
         }
         // A paper from a link: fetch the file next to it (and keep it)
-        fetchRelative(project, path).then(
-            (fetched) => event.ports[0].postMessage(fetched ? { found: true, bytes: fetched } : { found: false }));
+        fetchRelative(project, path).then(async (fetched) => {
+            event.ports[0].postMessage(fetched ? { found: true, bytes: fetched } : { found: false });
+            if (fetched && project.mode === "browser") await project.remember();
+        });
     });
 }
 
@@ -288,7 +318,7 @@ async function fetchRelative(project, path) {
         const response = await fetch(new URL(path, project.baseURL));
         if (!response.ok) return null;
         const bytes = new Uint8Array(await response.arrayBuffer());
-        await project.write(path, bytes);
+        await project.write(path, bytes, false, true);
         return bytes;
     } catch (e) {
         return null;
@@ -343,16 +373,33 @@ async function openURLProject(url, files = []) {
     }
     const project = new Project("browser", data ? "browser" : url.host, new Map([[name, bytes]]));
     project.mdPath = name;
-    if (data) {
-        await saveBrowserProject(project);
-        return project;
+    if (!data) {
+        project.baseURL = new URL(".", url).href;
+        await fetchPaperFiles(project, files);
     }
-    project.baseURL = new URL(".", url).href;
-    // the bibliography and the files the paper refers to, if they're there
+    await saveBrowserProject(project);
+    return project;
+}
+
+// Fetch from the project's baseURL the paper's bibliography, the files it refers to, and these files,
+// if they're there and the project doesn't have them
+async function fetchPaperFiles(project, files = []) {
+    const name = project.mdPath.slice(project.mdPath.lastIndexOf("/") + 1);
     const stem = name.slice(0, name.lastIndexOf(".")) || name;
-    const wanted = [stem + ".bib", ...referencedPaths(decoder.decode(bytes)), ...files];
+    const wanted = [stem + ".bib", ...referencedPaths(project.readText(project.mdPath)), ...files];
     await Promise.all(wanted.filter(path => !project.files.has(path)).map(path => fetchRelative(project, path)));
     project.changed = new Set(project.files.keys());
+}
+
+// A browser project from the files in a Share link: its paper is mdPath, and the files it doesn't have
+// come from base, if it has one, as for a paper opened from a URL
+async function openSharedProject(files, mdPath, base = null) {
+    const project = new Project("browser", "browser", files);
+    project.mdPath = mdPath;
+    if (base !== null) {
+        project.baseURL = base;
+        await fetchPaperFiles(project);
+    }
     await saveBrowserProject(project);
     return project;
 }

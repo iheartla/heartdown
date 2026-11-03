@@ -31,7 +31,7 @@ Served this way, the editor starts with an example paper, and you choose where p
   - a `data:` URL of the paper's text or a zip, such as `data:text/markdown;base64,…`.
 
   For example, `https://<editor>/?paper=https://iheartla.github.io/heartdown/CaseStudies/static/gallery_res/Judder/judder.txt`. The paper's server must allow other sites to load it (CORS), as GitHub Pages does. Compiling a paper runs its figure code in your browser, so compile only papers you trust.
-- **Share** copies a link to the editor with the paper's text in it, compressed, after `#z=`. Opening the link opens the paper into the browser's storage. The link has only the paper's text, not its other files. Since it's in the URL's fragment, the text isn't sent to the editor's server. Links with the text uncompressed, `?code=<the paper's text>`, open too.
+- **Share** copies a link to the editor with the paper and the files you made for it, zipped and compressed. Opening the link opens them into the browser's storage. What compiling generates is left out, since compiling makes it again. Text files (`.bib`, `.py` modules, `.ihla`) always go in. Images go in while the link stays under 200 KB; Share says which ones it leaves out. For a paper opened from a URL (such as a demo), the link also has that URL, and the files the link leaves out come from there, so the paper's images needn't be in it. The files are in the URL's fragment (after `#`), which isn't sent to the editor's server. Older links, with only the paper's text (`#z=` or `?code=`), open too.
 
 Wherever the paper is kept, the editor saves edits to it as you type. Ctrl/⌘-S saves right away.
 

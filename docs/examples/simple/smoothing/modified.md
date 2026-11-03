@@ -17,14 +17,14 @@ where  ❤`E_\text{data}`(U) = ‖ U - V ‖² where U ∈ ℝ^(n×3)❤ <span c
 
 <figure>
 ```python
-import make_cylinder, laplacian, numpy
+import make_cylinder, igl, numpy
 from lib import *
 
 # Create a cylinder
 mesh = make_cylinder.make_cylinder( 10, 10 )
 V = mesh.v * [[1,1,2]]
 F = mesh.fv
-L = -laplacian.cotmatrix(V,F)
+L = -igl.cotmatrix(V,F)
 
 # Add xy noise
 numpy.random.seed(0)

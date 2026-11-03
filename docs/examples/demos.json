@@ -65,16 +65,14 @@
           "title": "Mesh smoothing",
           "paper": "smoothing/base.md",
           "files": [
-            "make_cylinder.py",
-            "laplacian.py"
+            "make_cylinder.py"
           ]
         },
         {
           "title": "Mesh smoothing with weights (1-λ) and λ",
           "paper": "smoothing/modified.md",
           "files": [
-            "make_cylinder.py",
-            "laplacian.py"
+            "make_cylinder.py"
           ]
         }
       ]

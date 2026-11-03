@@ -3,7 +3,14 @@
 // did from the old Python server. The files live in the editor page (see
 // js/project.js), not here: a request for paper/<session>/<path> is passed to
 // the editor page with that session id, which answers with the file.
+//
+// It also makes the browser check with the server that its copies of the
+// editor's own files are current, as servers without Cache-Control (python3 -m
+// http.server) or with a max-age (GitHub Pages) let it skip that. A page would
+// otherwise mix two versions of the editor, such as a new editor.js with an old
+// project.js.
 
+const SCOPE = new URL(self.registration.scope).pathname;
 const PREFIX = new URL("paper/", self.registration.scope).pathname;
 const TIMEOUT = 10000;
 
@@ -21,8 +28,13 @@ self.addEventListener("activate", (event) => event.waitUntil(self.clients.claim(
 
 self.addEventListener("fetch", (event) => {
     const url = new URL(event.request.url);
-    if (url.origin !== self.location.origin || !url.pathname.startsWith(PREFIX)) return;
-    event.respondWith(serve(url));
+    if (url.origin !== self.location.origin || !url.pathname.startsWith(SCOPE)) return;
+    if (url.pathname.startsWith(PREFIX)) {
+        event.respondWith(serve(url));
+    } else if (event.request.method === "GET") {
+        // An unchanged file costs a 304
+        event.respondWith(fetch(new Request(event.request, { cache: "no-cache" })));
+    }
 });
 
 // Ask one window for the file; it answers only if it has this session

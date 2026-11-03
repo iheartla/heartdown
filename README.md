@@ -49,7 +49,15 @@ A paper is a Markdown file (`.md`) in a folder, next to the files it uses: a `.b
 
 **Code** downloads the generated code (`lib.py`, `lib.h` or `lib.m`, or all three), the same code the command line generates.
 
-The first compile of a paper with figure code takes a few seconds longer, because it loads NumPy, SciPy and Matplotlib. If figure code imports other packages that Pyodide provides, such as scikit-image, they load from the Pyodide CDN. Packages Pyodide doesn't provide, such as plotly or libigl (`import igl`), install from PyPI if they're pure Python or have a WebAssembly wheel. Both need a network connection.
+The first compile of a paper with figure code takes a few seconds longer, because it loads NumPy, SciPy and Matplotlib. If figure code imports other packages that Pyodide provides, such as scikit-image, they load from the Pyodide CDN. Packages Pyodide doesn't provide, such as plotly or libigl (`import igl`), install from PyPI if they're pure Python or have a WebAssembly wheel. Both need a network connection. A figure can also need a package it doesn't import by that name, a particular version, or a package that only its own modules import. List those PyPI requirements in the paper's YAML front matter, and the editor installs them before running the figures:
+
+    ---
+    requirements:
+      - libigl>=2.6.4.dev3
+      - python-slugify
+    ---
+
+Outside the editor, figure code runs with the environment's Python, which needs these packages installed already.
 
 ## Compiling from the command line
 

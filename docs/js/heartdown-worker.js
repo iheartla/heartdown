@@ -8,7 +8,7 @@
 //
 // Messages, main -> worker:
 //   {id, type: "compile", name, source, files: {path: Uint8Array}, removed: [path]}
-//   {id, type: "figure", name, source, files, removed}   (run one figure's code)
+//   {id, type: "figure", name, source, paper, files, removed}   (run one figure's code; paper is the paper's source)
 //   {id, type: "reset"}   (another paper is opened: forget this one's files)
 // worker -> main:
 //   {ready: true} once (or {ready: false, error})
@@ -57,14 +57,37 @@ LaLogger.getInstance().set_level(logging.ERROR)
 ready.then(() => self.postMessage({ ready: true }),
            e => self.postMessage({ ready: false, error: "Failed to load H❤️rtDown: " + e.message }));
 
+// The requirements of the paper's front matter installed so far
+const installedRequirements = new Set();
+// Install from PyPI what the paper's front matter lists under requirements:, for figures
+async function installRequirements(pyodide, paper) {
+    pyodide.globals.set("paper", paper);
+    const requirements = pyodide.runPython("app.paper_requirements(paper)").toJs();
+    for (const requirement of requirements.filter(r => !installedRequirements.has(r))) {
+        status(`Installing ${requirement} from PyPI…`);
+        pyodide.globals.set("requirement", requirement);
+        const error = await pyodide.runPythonAsync(`
+import micropip
+try:
+    await micropip.install(requirement)
+    error = None
+except Exception as e:
+    error = str(e)
+error`);
+        if (error) throw new Error(`Couldn't install ${requirement} from PyPI: ${error}`);
+        installedRequirements.add(requirement);
+    }
+}
+
 let figurePackagesLoaded = false;
-async function loadFigurePackages(pyodide, code) {
+async function loadFigurePackages(pyodide, code, paper) {
     if (!figurePackagesLoaded) {
         status("Loading NumPy, SciPy and Matplotlib for figures…");
         await pyodide.loadPackage(FIGURE_PACKAGES);
         pyodide.runPython("import matplotlib\nmatplotlib.use('Agg')");
         figurePackagesLoaded = true;
     }
+    await installRequirements(pyodide, paper);
     // Anything else the figure code imports that Pyodide provides (e.g. skimage)
     status("Loading the packages figures import…");
     await pyodide.loadPackagesFromImports(code);
@@ -137,7 +160,7 @@ function written(pyodide, before) {
 
 async function compile(pyodide, { name, source }) {
     const code = figureCode(source);
-    if (code) await loadFigurePackages(pyodide, code);
+    if (code) await loadFigurePackages(pyodide, code, source);
     status("Compiling…");
     pyodide.globals.set("source", source);
     pyodide.globals.set("name", name);
@@ -147,8 +170,8 @@ async function compile(pyodide, { name, source }) {
     return js;
 }
 
-async function runFigure(pyodide, { name, source }) {
-    await loadFigurePackages(pyodide, source);
+async function runFigure(pyodide, { name, source, paper }) {
+    await loadFigurePackages(pyodide, source, paper);
     status("Running the figure code…");
     pyodide.globals.set("source", source);
     pyodide.globals.set("name", name);

@@ -68,6 +68,35 @@ def run_figure_script(source, cwd):
         sys.path.remove(cwd)
         os.chdir(old_cwd)
 
+def paper_requirements(content):
+    """
+    The PyPI requirements that the paper's YAML front matter lists for its figures, which the editor installs:
+        requirements:
+          - libigl>=2.6.4.dev3
+    Outside the browser, figures run with this environment's Python, which must already have them.
+    :return: a list of requirement strings, such as "libigl>=2.6.4.dev3"
+    """
+    import yaml
+    lines = content.split('\n')
+    if lines[0] != '---':
+        return []
+    meta_lines = []
+    for line in lines[1:]:
+        if line in ('---', '...'):
+            break
+        meta_lines.append(line)
+    try:
+        meta = yaml.safe_load('\n'.join(meta_lines))
+    except yaml.YAMLError:
+        # compiling the paper reports it
+        return []
+    requirements = meta.get('requirements') if isinstance(meta, dict) else None
+    if isinstance(requirements, str):
+        requirements = [requirements]
+    if not isinstance(requirements, list):
+        return []
+    return [str(r).strip() for r in requirements if r is not None and str(r).strip()]
+
 def update_resources(dst):
     """
     Copy extras/heartdown-resource to dst, replacing only the files that differ (left from an older H❤️rtDown)

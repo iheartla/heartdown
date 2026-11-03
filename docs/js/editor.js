@@ -571,7 +571,7 @@ async function onUpdatePython() {
     setBtnTitle("Running", true);
     try {
         await project.write(project.mdPath, latestSource);
-        const result = await ask({ type: "figure", name: curFigure, source: content });
+        const result = await ask({ type: "figure", name: curFigure, source: content, paper: latestSource });
         if (result.ok) {
             reloadIframe();
         } else {

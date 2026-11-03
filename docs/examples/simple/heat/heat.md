@@ -41,17 +41,17 @@ top = V[np.argmax(V[:, 2])]
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 times = (.01, .1, 1)
-fig = make_subplots(rows=1, cols=len(times), specs=[[{'type': 'surface'}] * len(times)],
-                    subplot_titles=['t = {}'.format(t) for t in times])
-for col, t in enumerate(times, 1):
+fig = make_subplots(rows=len(times), cols=1, specs=[[{'type': 'surface'}]] * len(times),
+                    subplot_titles=['t = {}'.format(t) for t in times], vertical_spacing=.04)
+for row, t in enumerate(times, 1):
     u = heat(M, L, δ, t).u
     fig.add_trace(go.Mesh3d(x=V[:, 0], y=V[:, 1], z=V[:, 2], i=F[:, 0], j=F[:, 1], k=F[:, 2],
                             intensity=u / u.max(), colorscale='Inferno', cmin=0, cmax=1,
-                            lighting=dict(ambient=.5, diffuse=.7, specular=.2), showscale=col == len(times)), 1, col)
-camera = dict(eye=dict(x=.9, y=.9, z=1.6))
+                            lighting=dict(ambient=.5, diffuse=.7, specular=.2), showscale=row == 1), row, 1)
+camera = dict(eye=dict(x=.6, y=.6, z=1.1))
 fig.update_scenes(aspectmode='data', camera=camera,
                   xaxis_visible=False, yaxis_visible=False, zaxis_visible=False)
-fig.update_layout(margin=dict(r=0, l=0, b=0, t=30), height=350)
+fig.update_layout(margin=dict(r=0, l=0, b=10, t=30))
 fig.write_html('diffusion.html')
 ```
 <img src="diffusion.html" alt="Heat spreading from the top of a bumpy sphere">

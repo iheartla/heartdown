@@ -26,6 +26,9 @@ const PAPER_DIR = "/paper";
 const FIGURE_PACKAGES = ["numpy", "scipy", "matplotlib"];
 // What modules need for what figures usually do but don't require, which Pyodide provides
 const OPTIONAL_PACKAGES = { "plotly.express": ["pandas"] };  // without a DataFrame
+// What to install from PyPI for modules whose package has another name. libigl's only WebAssembly wheel
+// is a development release, which micropip installs only if the requirement names one.
+const PYPI_REQUIREMENTS = { igl: "libigl>=2.6.4.dev3" };
 
 const status = (text) => self.postMessage({ status: text });
 
@@ -78,7 +81,7 @@ import importlib.util
 `).toJs();
     for (const name of missing) {
         status(`Installing ${name} from PyPI…`);
-        pyodide.globals.set("name", name);
+        pyodide.globals.set("name", PYPI_REQUIREMENTS[name] || name);
         // If it can't be installed, running the figure code reports the ImportError
         await pyodide.runPythonAsync("import micropip\ntry:\n    await micropip.install(name)\nexcept Exception:\n    pass");
     }

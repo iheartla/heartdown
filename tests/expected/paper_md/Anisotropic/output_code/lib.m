@@ -29,52 +29,36 @@ function output = Anisotropic(a, C, F)
 %                   0] 
 %    `$\mathbf{Q}_{2}$` = [ 0
 %                   0
-%                   a^T] 
-%    
-%    
-%    
-    a = reshape(a,[],1);
-
+%                   a^T]
+    a = reshape(a, [], 1);
     assert( numel(a) == 3 );
     assert( isequal(size(C), [3, 3]) );
     assert( isequal(size(F), [3, 3]) );
-
+    
     % A = a a^T
-
-    A = reshape(a, [3, 1]) * a';
+    A = a * a.';
     % `$\lambda_{0,1,2}$`=2||a||_2^2
-
-    lambda_0_1_2 = 2 * norm(a, 2).^2;
+    lambda_0_1_2 = 2 * (norm(a, 2).^2);
     % `$I_5$` = tr(CA)
-
     I_5 = trace(C * A);
     % `$\frac{∂I₅}{∂F}$` = 2FA
-
-    fracdeeI5deeF = 2 * F * A;
+    fracdeeI5deeF = (2 * F) * A;
     % `$\frac{∂²I₅}{∂f²}$` = 2[A₁,₁I₃  A₁,₂I₃  A₁,₃I₃
     %                A₂,₁I₃  A₂,₂I₃  A₂,₃I₃
     %                A₃,₁I₃  A₃,₂I₃  A₃,₃I₃]
-
-    fracdee2I5deef2_0 = [[A(1, 1) * speye(3), A(1, 2) * speye(3), A(1, 3) * speye(3)]; [A(2, 1) * speye(3), A(2, 2) * speye(3), A(2, 3) * speye(3)]; [A(3, 1) * speye(3), A(3, 2) * speye(3), A(3, 3) * speye(3)]];
-    fracdee2I5deef2 = 2 * fracdee2I5deef2_0;
+    fracdee2I5deef2 = 2 * [[A(1, 1) * eye(3), A(1, 2) * eye(3), A(1, 3) * eye(3)]; [A(2, 1) * eye(3), A(2, 2) * eye(3), A(2, 3) * eye(3)]; [A(3, 1) * eye(3), A(3, 2) * eye(3), A(3, 3) * eye(3)]];
     % `$\mathbf{Q}_{0}$` = [a^T
     %                0
     %                0]
-
-    mathbfQ_0_0 = [[a']; [zeros(1, 3)]; [zeros(1, 3)]];
-    mathbfQ_0 = mathbfQ_0_0;
+    mathbfQ_0 = [[a.']; [zeros(1, 3)]; [zeros(1, 3)]];
     % `$\mathbf{Q}_{1}$` = [0
     %                     a^T
     %                0]
-
-    mathbfQ_1_0 = [[zeros(1, 3)]; [a']; [zeros(1, 3)]];
-    mathbfQ_1 = mathbfQ_1_0;
+    mathbfQ_1 = [[zeros(1, 3)]; [a.']; [zeros(1, 3)]];
     % `$\mathbf{Q}_{2}$` = [ 0
     %                0
     %                a^T]
-
-    mathbfQ_2_0 = [[zeros(1, 3)]; [zeros(1, 3)]; [a']];
-    mathbfQ_2 = mathbfQ_2_0;
+    mathbfQ_2 = [[zeros(1, 3)]; [zeros(1, 3)]; [a.']];
     output.A = A;
     output.lambda_0_1_2 = lambda_0_1_2;
     output.I_5 = I_5;
@@ -101,31 +85,22 @@ function output = Anisotropic2D(a, A)
 %    `$\mathbf{Q}_{0}$` = [a^T
 %                   0] 
 %    `$\mathbf{Q}_{1}$` = [0
-%                        a^T] 
-%    
-    a = reshape(a,[],1);
-
+%                        a^T]
+    a = reshape(a, [], 1);
     assert( numel(a) == 2 );
     assert( isequal(size(A), [2, 2]) );
-
+    
     % `$\lambda_{0,1}$`=2||a||_2^2
-
-    lambda_0_1 = 2 * norm(a, 2).^2;
+    lambda_0_1 = 2 * (norm(a, 2).^2);
     % `$\frac{∂²I₅}{∂f²}$` = 2[A₁,₁I_2  A₁,₂I_2
     %                A₂,₁I_2  A₂,₂I_2]
-
-    fracdee2I5deef2_0 = [[A(1, 1) * speye(2), A(1, 2) * speye(2)]; [A(2, 1) * speye(2), A(2, 2) * speye(2)]];
-    fracdee2I5deef2 = 2 * fracdee2I5deef2_0;
+    fracdee2I5deef2 = 2 * [[A(1, 1) * eye(2), A(1, 2) * eye(2)]; [A(2, 1) * eye(2), A(2, 2) * eye(2)]];
     % `$\mathbf{Q}_{0}$` = [a^T
     %                0]
-
-    mathbfQ_0_0 = [[a']; [zeros(1, 2)]];
-    mathbfQ_0 = mathbfQ_0_0;
+    mathbfQ_0 = [[a.']; [zeros(1, 2)]];
     % `$\mathbf{Q}_{1}$` = [0
     %                     a^T]
-
-    mathbfQ_1_0 = [[zeros(1, 2)]; [a']];
-    mathbfQ_1 = mathbfQ_1_0;
+    mathbfQ_1 = [[zeros(1, 2)]; [a.']];
     output.lambda_0_1 = lambda_0_1;
     output.fracdee2I5deef2 = fracdee2I5deef2;
     output.mathbfQ_0 = mathbfQ_0;

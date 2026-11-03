@@ -3,102 +3,95 @@
 #include <Eigen/QR>
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
+#include <Eigen/SVD>
 #include <iostream>
 #include <set>
+#include <vector>
+#include <tuple>
+#include <functional>
 #include <algorithm>
-#include "type_helper.h"
+#include <cmath>
+#include <stdexcept>
+#ifndef IHEARTLA_SORTED_SET
+#define IHEARTLA_SORTED_SET
+// sets are sorted vectors without duplicates (defined before the last #include:
+// code that wraps the generated code in a namespace starts it after that)
+template<typename T> std::vector<T> sorted_set(std::vector<T> v) { std::sort(v.begin(), v.end()); v.erase(std::unique(v.begin(), v.end()), v.end()); return v; }
+// (vectors in lexicographic order)
+template<typename S, int R, int C, int O, int MR, int MC> std::vector<Eigen::Matrix<S, R, C, O, MR, MC>> sorted_set(std::vector<Eigen::Matrix<S, R, C, O, MR, MC>> v) {
+using M = Eigen::Matrix<S, R, C, O, MR, MC>;
+std::sort(v.begin(), v.end(), [](const M & a, const M & b){ return std::lexicographical_compare(a.data(), a.data() + a.size(), b.data(), b.data() + b.size()); });
+v.erase(std::unique(v.begin(), v.end(), [](const M & a, const M & b){ return a.size() == b.size() && (a.array() == b.array()).all(); }), v.end());
+return v;
+}
+#endif
+#include <unsupported/Eigen/MatrixFunctions>
 
 struct eccentricity {
     using DT = double;
-    using MatrixD = Eigen::MatrixXd;
-    using VectorD = Eigen::VectorXd;
-    int 𝑙_0;
-    Eigen::Matrix<DT, 3, 1> q;
     std::function<double(double, double)> m;
-    double 𝑓_𝑠0;
     Eigen::Matrix<double, 10, 1> 𝑝;
+    double 𝑓_𝑠0;
     double a;
-    template<typename REAL>
-    REAL 𝑔(
-        const Eigen::Matrix<REAL, 2, 1> & x,
-        const Eigen::Matrix<REAL, 2, 1> & x_0,
-        const REAL & 𝜃,
-        const REAL & 𝜎,
-        const REAL & 𝑓_𝑠)
+    int 𝑙_0;
+    Eigen::Matrix<double, 3, 1> q;
+
+    eccentricity() {}
+    eccentricity(const std::function<double(double, double)> & m, const Eigen::Matrix<double, 10, 1> & 𝑝, const double & 𝑓_𝑠0, const double & a)
     {
-        Eigen::Matrix<REAL, 2, 1> 𝑔_1;
-        𝑔_1 << cos(𝜃), sin(𝜃);
-        return exp(-pow((x - x_0).template lpNorm<2>(), 2) / REAL((2 * pow(𝜎, 2)))) * cos((2 * M_PI * 𝑓_𝑠 * x).dot(𝑔_1));    
-    }
-    template<typename REAL>
-    REAL 𝜏(
-        const REAL & 𝑓_𝑠)
-    {
-        return this->m(log10(𝑓_𝑠) - log10(this->𝑓_𝑠0), REAL(0));    
-    }
-    template<typename REAL>
-    REAL 𝜁(
-        const REAL & 𝑓_𝑠)
-    {
-        return exp(this->𝑝[10-1] * 𝜏(𝑓_𝑠)) - 1;    
-    }
-    template<typename REAL>
-    REAL Ψ(
-        const REAL & 𝑒,
-        const REAL & 𝑓_𝑠)
-    {
-        return this->m(REAL(0), this->𝑝[1-1] * pow(𝜏(𝑓_𝑠), 2) + this->𝑝[2-1] * 𝜏(𝑓_𝑠) + this->𝑝[3-1] + (this->𝑝[4-1] * pow(𝜏(𝑓_𝑠), 2) + this->𝑝[5-1] * 𝜏(𝑓_𝑠) + this->𝑝[6-1]) * 𝜁(𝑓_𝑠) * 𝑒 + (this->𝑝[7-1] * pow(𝜏(𝑓_𝑠), 2) + this->𝑝[8-1] * 𝜏(𝑓_𝑠) + this->𝑝[9-1]) * 𝜁(𝑓_𝑠) * pow(𝑒, 2));    
-    }
-    template<typename REAL>
-    REAL 𝐴(
-        const REAL & 𝑒)
-    {
-        return log(64) * 2.3 / REAL((0.106 * (𝑒 + 2.3)));    
-    }
-    template<typename REAL>
-    REAL 𝑑(
-        const REAL & 𝐿)
-    {
-        return 7.75 - 5.75 * (pow((𝐿 * this->a / REAL(846)), 0.41) / REAL((pow((𝐿 * this->a / REAL(846)), 0.41) + 2)));    
-    }
-    template<typename REAL>
-    REAL 𝑙(
-        const REAL & 𝐿)
-    {
-        return M_PI * pow(𝑑(𝐿), 2) / REAL(4) * 𝐿;    
-    }
-    template<typename REAL>
-    REAL 𝑠(
-        const REAL & 𝑒,
-        const REAL & 𝑓_𝑠)
-    {
-        return 𝜁(𝑓_𝑠) * (this->q[1-1] * pow(𝑒, 2) + this->q[2-1] * 𝑒) + this->q[3-1];    
-    }
-    template<typename REAL>
-    REAL hatΨ(
-        const REAL & 𝑒,
-        const REAL & 𝑓_𝑠,
-        const REAL & 𝐿)
-    {
-        return (𝑠(𝑒, 𝑓_𝑠) * (log10(𝑙(𝐿) / REAL(this->𝑙_0))) + 1) * Ψ(𝑒, 𝑓_𝑠);    
-    }
-    eccentricity(
-        const std::function<double(double, double)> & m,
-        const Eigen::Matrix<double, 10, 1> & 𝑝,
-        const double & 𝑓_𝑠0,
-        const double & a)
-    {
-    
         this->m = m;
-        this->𝑓_𝑠0 = 𝑓_𝑠0;
         this->𝑝 = 𝑝;
+        this->𝑓_𝑠0 = 𝑓_𝑠0;
         this->a = a;
         // `$𝑙_0$` = 1488
-        𝑙_0 = 1488;
+        this->𝑙_0 = 1488;
         // q = (5.71 ⋅ 10^(-6), -1.78 ⋅ 10^(-4), 0.204)
-        Eigen::Matrix<DT, 3, 1> q_0;
-        q_0 << 5.71 * pow(10, (-6)), -1.78 * pow(10, (-4)), 0.204;
-        q = q_0;
+        this->q = [&](){ Eigen::Matrix<double, 3, 1> v(3); v << 5.71 * pow(10, -6), -(1.78 * pow(10, -4)), 0.204; return v; }();
+    }
+
+    double 𝑔(const Eigen::Matrix<double, 2, 1> & x, const Eigen::Matrix<double, 2, 1> & x_0, const double & 𝜃, const double & 𝜎, const double & 𝑓_𝑠)
+    {
+        return exp(-(pow((x - x_0).norm(), 2) / (2 * pow(𝜎, 2)))) * cos(((((2 * M_PI) * 𝑓_𝑠) * x).eval()).dot(([&](){ Eigen::Matrix<double, 2, 1> v(2); v << cos(𝜃), sin(𝜃); return v; }()).eval()));
+    }
+
+    double 𝜏(const double & 𝑓_𝑠)
+    {
+        return this->m(log10(𝑓_𝑠) - log10(this->𝑓_𝑠0), 0);
+    }
+
+    double 𝜁(const double & 𝑓_𝑠)
+    {
+        return exp(this->𝑝(9) * this->𝜏(𝑓_𝑠)) - 1;
+    }
+
+    double Ψ(const double & 𝑒, const double & 𝑓_𝑠)
+    {
+        return this->m(0, this->𝑝(0) * pow(this->𝜏(𝑓_𝑠), 2) + this->𝑝(1) * this->𝜏(𝑓_𝑠) + this->𝑝(2) + ((this->𝑝(3) * pow(this->𝜏(𝑓_𝑠), 2) + this->𝑝(4) * this->𝜏(𝑓_𝑠) + this->𝑝(5)) * this->𝜁(𝑓_𝑠)) * 𝑒 + ((this->𝑝(6) * pow(this->𝜏(𝑓_𝑠), 2) + this->𝑝(7) * this->𝜏(𝑓_𝑠) + this->𝑝(8)) * this->𝜁(𝑓_𝑠)) * pow(𝑒, 2));
+    }
+
+    double 𝐴(const double & 𝑒)
+    {
+        return (log(64) * 2.3) / (0.106 * (𝑒 + 2.3));
+    }
+
+    double 𝑑(const double & 𝐿)
+    {
+        return 7.75 - 5.75 * (pow((𝐿 * this->a) / 846, 0.41) / (pow((𝐿 * this->a) / 846, 0.41) + 2));
+    }
+
+    double 𝑙(const double & 𝐿)
+    {
+        return ((M_PI * pow(this->𝑑(𝐿), 2)) / 4) * 𝐿;
+    }
+
+    double 𝑠(const double & 𝑒, const double & 𝑓_𝑠)
+    {
+        return this->𝜁(𝑓_𝑠) * (this->q(0) * pow(𝑒, 2) + this->q(1) * 𝑒) + this->q(2);
+    }
+
+    double hatΨ(const double & 𝑒, const double & 𝑓_𝑠, const double & 𝐿)
+    {
+        return (this->𝑠(𝑒, 𝑓_𝑠) * log10(this->𝑙(𝐿) / this->𝑙_0) + 1) * this->Ψ(𝑒, 𝑓_𝑠);
     }
 };
 

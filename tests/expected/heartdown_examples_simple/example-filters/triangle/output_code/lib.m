@@ -3,17 +3,14 @@ function output = filters()
 %
 %    f(x) = { 1-|x| if |x| < 1
 %             0 otherwise where x ∈ ℝ
-%    
-    function [ret] = f(x)
-        assert(numel(x) == 1);
-
+    function ret = f(x)
+        ret_1 = 0;
         if abs(x) < 1
-            ret = 1 - abs(x);
+            ret_1 = 1 - abs(x);
         else
-            ret = 0;
+            ret_1 = 0;
         end
+        ret = ret_1;
     end
-
-    output.f = @f;
 end
 

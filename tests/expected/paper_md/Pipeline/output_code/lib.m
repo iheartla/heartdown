@@ -1,5 +1,5 @@
 function output = pipeline(f_x, f_y, c_x, c_y, r, phi_1_d, phi_d, x_i, x_j, alpha_i, alpha_j, y, X, Y, Z, x)
-% output = pipeline(`$f_x$`, `$f_y$`, `$c_x$`, `$c_y$`, r, `$φ^{-1}_d$`, `$φ_d$`, `$x_i$`, `$x_j$`, `$α_i$`, `$α_j$`, y, X, Y, Z, x)
+% output = pipeline(f_x, f_y, c_x, c_y, r, phi_1_d, phi_d, x_i, x_j, alpha_i, alpha_j, y, X, Y, Z, x)
 %
 %    `$\textbf{X}$` = (X,Y,Z)^T
 %    ϕ = arcsin(C/D) 
@@ -64,145 +64,79 @@ function output = pipeline(f_x, f_y, c_x, c_y, r, phi_1_d, phi_d, x_i, x_j, alph
 %    
 %    arcsin, arctan from trigonometry
 %    `$α_1$` = ϕ - γ
-%    `$α_2$` = π - ϕ - γ  
-%    
-%    
-    x_i = reshape(x_i,[],1);
-    x_j = reshape(x_j,[],1);
-
-    assert(numel(f_x) == 1);
-    assert(numel(f_y) == 1);
-    assert(numel(c_x) == 1);
-    assert(numel(c_y) == 1);
-    assert(numel(r) == 1);
+%    `$α_2$` = π - ϕ - γ
+    x_i = reshape(x_i, [], 1);
+    x_j = reshape(x_j, [], 1);
+    assert( numel(f_x) == 1 );
+    assert( numel(f_y) == 1 );
+    assert( numel(c_x) == 1 );
+    assert( numel(c_y) == 1 );
+    assert( numel(r) == 1 );
     assert( numel(x_i) == 2 );
     assert( numel(x_j) == 2 );
-    assert(numel(alpha_i) == 1);
-    assert(numel(alpha_j) == 1);
-    assert(numel(y) == 1);
-    assert(numel(X) == 1);
-    assert(numel(Y) == 1);
-    assert(numel(Z) == 1);
-    assert(numel(x) == 1);
-
+    assert( numel(alpha_i) == 1 );
+    assert( numel(alpha_j) == 1 );
+    assert( numel(y) == 1 );
+    assert( numel(X) == 1 );
+    assert( numel(Y) == 1 );
+    assert( numel(Z) == 1 );
+    assert( numel(x) == 1 );
+    
     % `$\textbf{X}$` = (X,Y,Z)^T
-
-    textbfX = [X; Y; Z]';
+    textbfX = [X; Y; Z].';
     % K = [`$f_x$` 0 `$c_x$`
     %       0   `$f_y$` `$c_y$`
     %       0      0    1]
-
-    K_0 = zeros(3, 3);
-    K_0(1,:) = [f_x, 0, c_x];
-    K_0(2,:) = [0, f_y, c_y];
-    K_0(3,:) = [0, 0, 1];
-    K = K_0;
+    K = [[f_x, 0, c_x]; [0, f_y, c_y]; [0, 0, 1]];
     % `$\textbf{t}$` = [0;0;-r]
-
-    textbft_0 = zeros(3, 1);
-    textbft_0(1,:) = [0];
-    textbft_0(2,:) = [0];
-    textbft_0(3,:) = [-r];
-    textbft = textbft_0;
+    textbft = [[0]; [0]; [-r]];
     % A = X ⋅ `$f_x$` - Z⋅(x - `$c_x$` )
-
-    A = X * f_x - Z * (x - c_x);
+    A = X * f_x - (Z * (x - c_x));
     % B = Z⋅`$f_x$` + X⋅(x -`$c_x$` )
-
     B = Z * f_x + X * (x - c_x);
     % D = √(A^2 +B^2)
-
-    D = sqrt((A.^2 + B.^2));
+    D = sqrt(A.^2 + B.^2);
     % γ = arctan(B/A)
-
     gamma = atan(B / A);
     % C = -r⋅(x -`$c_x$` )
-
-    C = -r * (x - c_x);
+    C = -(r * (x - c_x));
     % ϕ = arcsin(C/D)
-
-    phi_ = asin(C / D);
+    phi = asin(C / D);
     % `$α_1$` = ϕ - γ
-
-    alpha_1 = phi_ - gamma;
+    alpha_1 = phi - gamma;
     % `$α_2$` = π - ϕ - γ
-
-    alpha_2 = pi - phi_ - gamma;
-    function [ret_2] = R(alpha)
-        assert(numel(alpha) == 1);
-
-        R_0 = zeros(3, 3);
-        R_0(1,:) = [-sin(alpha), 0, -cos(alpha)];
-        R_0(2,:) = [0, 1, 0];
-        R_0(3,:) = [cos(alpha), 0, -sin(alpha)];
-        ret_2 = R_0;
+    alpha_2 = pi - phi - gamma;
+    function ret = R(alpha)
+        ret = [[-sin(alpha), 0, -cos(alpha)]; [0, 1, 0]; [cos(alpha), 0, -sin(alpha)]];
     end
-
-    function [ret_3] = P(alpha)
-        assert(numel(alpha) == 1);
-
-        P_0 = [[R(alpha), textbft]];
-        ret_3 = K * P_0;
+    function ret = P(alpha)
+        ret = K * [[R(alpha), textbft]];
     end
-
-    function [ret_4] = t(alpha)
-        assert(numel(alpha) == 1);
-
-        ret_4 = (alpha - alpha_i) / (alpha_j - alpha_i);
+    function ret = t(alpha)
+        ret = (alpha - alpha_i) / (alpha_j - alpha_i);
     end
-
-    function [ret_5] = textbfx(alpha)
-        assert(numel(alpha) == 1);
-
-        ret_5 = phi_1_d((1 - t(alpha)) * phi_d(x_i) + t(alpha) * phi_d(x_j));
+    function ret = textbfx(alpha)
+        ret = phi_1_d((1 - t(alpha)) * phi_d(x_i) + t(alpha) * phi_d(x_j));
     end
-
-    function [ret_6] = omega(x)
-        assert(numel(x) == 1);
-
-        ret_6 = atan((x - c_x) / f_x);
+    function ret = omega(x)
+        ret = atan((x - c_x) / f_x);
     end
-
-    function [ret_7] = s(x)
-        assert(numel(x) == 1);
-
-        ret_7 = (y - c_y) * cos(omega(x));
+    function ret = s(x)
+        ret = (y - c_y) * cos(omega(x));
     end
-
-    function [ret_8] = phi(x)
-        assert(numel(x) == 1);
-
-        ret_8 = [omega(x); s(x)];
+    function ret = phi(x)
+        ret = [omega(x); s(x)];
     end
-
     output.textbfX = textbfX;
-    output.phi_ = phi_;
-    output.D = D;
-    output.gamma = gamma;
     output.K = K;
     output.textbft = textbft;
     output.A = A;
     output.B = B;
+    output.D = D;
+    output.gamma = gamma;
     output.C = C;
+    output.phi = phi;
     output.alpha_1 = alpha_1;
     output.alpha_2 = alpha_2;
-    output.R = @R;
-    output.P = @P;
-    output.textbfx = @textbfx;
-    output.t = @t;
-    output.phi = @phi;
-    output.omega = @omega;
-    output.s = @s;
-    output.alpha_i = alpha_i;    
-    output.alpha_j = alpha_j;    
-    output.phi_1_d = phi_1_d;    
-    output.phi_d = phi_d;    
-    output.x_i = x_i;    
-    output.x_j = x_j;    
-    output.x = x;    
-    output.c_x = c_x;    
-    output.f_x = f_x;    
-    output.y = y;    
-    output.c_y = c_y;
 end
 

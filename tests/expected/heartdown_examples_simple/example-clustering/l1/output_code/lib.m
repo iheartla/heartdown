@@ -4,22 +4,30 @@ function output = clustering(y)
 %    min_( c ∈ ℝ^m ) ∑_i ‖ y_i - c ‖^1
 %    where
 %    y_i ∈ ℝ^m
-%    
-    dim_0 = size(y, 1);
+    y_n = size(y, 1);
     m = size(y, 2);
-    assert( isequal(size(y), [dim_0, m]) );
-
-    c = optimvar('c', m);
-    function ret = target_2(c)
-        sum_0 = 0;
-        for i = 1:size(y, 1)
-            sum_0 = sum_0 + norm(y(i,:)' - c, 2).^1;
-        end
-        ret = sum_0;
+    
+    % min_( c ∈ ℝ^m ) ∑_i ‖ y_i - c ‖^1
+    n_2 = 0 + (m)*(1);
+    lb_3 = -Inf(n_2, 1); ub_4 = Inf(n_2, 1);
+    function x_7 = tobox_5(z_6)
+        x_7 = z_6;
+        m_8 = isfinite(lb_3) & isfinite(ub_4); x_7(m_8) = lb_3(m_8) + (ub_4(m_8) - lb_3(m_8)) .* (sin(z_6(m_8)) + 1) / 2;
+        m_8 = isfinite(lb_3) & ~isfinite(ub_4); x_7(m_8) = lb_3(m_8) + z_6(m_8).^2;
+        m_8 = ~isfinite(lb_3) & isfinite(ub_4); x_7(m_8) = ub_4(m_8) - z_6(m_8).^2;
     end
-    [~, optimize] = fminunc(@target_2,zeros(m,1));
-    ret = optimize;
+    function value_11 = objective_9(z_13)
+        X_10 = tobox_5(z_13);
+        c = reshape(X_10(0 + 1:0 + (m)*(1)), m, 1);
+        sum_12 = 0;
+        for i_ = 1:y_n
+            sum_12 = sum_12 + norm(y(i_, :).' - c).^1;
+        end
+        value_11 = (sum_12);
+    end
+    z_14 = fminsearch(@objective_9, zeros(n_2, 1), optimset('TolX', 1e-12, 'TolFun', 1e-12, 'MaxFunEvals', 1e5, 'MaxIter', 1e5));
+    opt_1 = objective_9(z_14);
+    ret = opt_1;
     output.ret = ret;
-    output.y = y;
 end
 

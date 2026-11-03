@@ -7,7 +7,7 @@ H❤️rtDown turns a Markdown paper with I❤️LA code blocks into an interact
 ```
 paper.md ──▶ app.py: process_input
                ├─ Python-Markdown (deps/markdown) with H❤️rtDown's extensions:
-               │    iheartla_code ── compiles each context's I❤️LA code ──▶ I❤️LA compiler (deps/iheartla)
+               │    iheartla_code ── compiles each context's I❤️LA code ──▶ Rust I❤️LA compiler (deps/iheartla, WebAssembly)
                │    mdx_bib, mdx_math, meta (YAML front matter), …
                ├─ post-processing: title, abstract, section numbers, contexts, equation numbers
                ├─ figures: runs each <figure>'s Python code against the generated lib.py
@@ -31,7 +31,7 @@ The editor used to call a Tornado server (`server.py`) for every compile, which 
 
 The Markdown processing is Python-Markdown with H❤️rtDown's extensions, in `deps/markdown`. `iheartla_code` does most of the work:
 
-- It groups the I❤️LA blocks of a paper by context (`❤: name`) and compiles each context with `compile_la_content(..., get_json=True)`. That returns the code for each output, plus the equation data: symbols, types, descriptions and dependencies.
+- It groups the I❤️LA blocks of a paper by context (`❤: name`) and compiles each context with `compile_la_content(..., get_json=True)`, from `iheartla.rust_heartdown` (the Rust compiler; see Decisions). That returns the code for each output, plus the equation data: symbols, types, descriptions and dependencies.
 - It replaces each block with MacroMathJax that the paper's `paper.js` makes clickable.
 - It builds the glossary JSON (`iheartla_data`, `sym_data`).
 - Symbol descriptions come only from the author: a description after the type in a `where` block, or a `<span class="def:K">` or `<span class="def">` in the prose. A context's prose also describes the symbols of the other modules whose code is in that context. An imported symbol, or a module parameter and the argument bound to it, is the same symbol in both modules, so a description of either describes both. Descriptions aren't inferred from ordinary prose: on the gallery papers, a "$X$ is …" heuristic found definitions for 7 of 104 undescribed symbols, some of them wrong.
@@ -54,7 +54,7 @@ js/heartdown-worker.js      (disk or IndexedDB)         │ GET paper/<session>/
    /paper = mirror of the folder
 ```
 
-- **`js/heartdown-worker.js`** (a module Web Worker) loads Pyodide, the vendored packages and `heartdown-py.zip`. That zip holds `app.py`, `extras/heartdown-resource`, and the `iheartla` and `markdown` packages at the top level, as if installed.
+- **`js/heartdown-worker.js`** (a module Web Worker) loads Pyodide, the vendored packages and `heartdown-py.zip`. That zip holds `app.py`, `extras/heartdown-resource`, and the `iheartla` and `markdown` packages at the top level, as if installed. The `iheartla` package carries the Rust compiler's WebAssembly module, which Pyodide runs with the browser's WebAssembly.
   - The paper's folder is mirrored at `/paper` in Pyodide's file system.
   - Each request (`compile`, `figure`, `reset`) carries the files that changed in the editor since the last one.
   - Each reply carries the files that the compile or figure run wrote. The worker finds them by comparing modification times and sizes before and after the run.
@@ -93,15 +93,19 @@ js/heartdown-worker.js      (disk or IndexedDB)         │ GET paper/<session>/
 - A JavaScript port would mean rewriting about 1,500 lines of H❤️rtDown's extensions and replacing Python-Markdown's behavior with a different Markdown parser's.
 - The cost is a 3 s start-up (cached after the first visit) and the 44 MB of vendored files.
 
-**Use the Python I❤️LA compiler, not the Rust one.**
-- The iheartla repository's `rust` branch has a Rust compiler built to WebAssembly, which is much faster, especially for I❤️MESH imports.
-- Its WebAssembly interface returns only code strings. H❤️rtDown needs `compile_la_content`'s equation data: symbol tables with types, descriptions, dependencies, local functions and the `expr_dict` for MathJax.
-- With the Python compiler, a plain paper compiles in 0.4–3 s on first load and in 0.1 s after that, thanks to the per-context cache.
-- `app.compile_paper()` is the seam for a later switch: a Rust compiler that exports the same equation data could replace `compile_la_content` in `iheartla_code`.
+**Use the Rust I❤️LA compiler, as WebAssembly.**
+- The iheartla repository's `rust` branch has a Rust rewrite of the compiler, which is much faster, especially for I❤️MESH imports (see its `rust/README.md` and `notes/Performance.md`). The corpus tests take 8 s with it, 26 s with the Python compiler.
+- H❤️rtDown needs more than code from a compile: what `compile_la_content(..., get_json=True)` returns. That is the code of each output in parts (imports apart from each context's class), each equation's MathJax and MacroMathJax by its source text, and the equation data: parameters, definitions, optimization variables, local functions and imports, with their types and descriptions, and the symbols each definition relates (for the symbol colors).
+- So the Rust compiler exports that too: `rust/src/heartdown.rs`, `ih_heartdown_json` in the WebAssembly module (`iheartla heartdown` on the command line). `iheartla/rust_heartdown.py` turns it into the objects the Python compiler returns (`CodeFrame`s, `EquationData`), and `iheartla_code` imports its `compile_la_content`.
+- One WebAssembly module runs everywhere: with wasmtime on the command line, and with the browser's WebAssembly in Pyodide (`iheartla/rust_wasm.py`). The command line needs no Rust toolchain. The module is `iheartla/rust/iheartla.wasm` (2.9 MB), built by the submodule's `docs/update_rust_wasm.sh`.
+- H❤️rtDown no longer imports the Python compiler. It still imports `la_helper`, which imports TatSu and SymPy, so the editor still loads them.
+- On the test corpus, the pages are the same as with the Python compiler but for two details of the glossary's type data. A sequence without a declared length has the length's name in the generated code (`y_n`) where Python had `dim_0`; the page doesn't show it. And `w = 10^6` is an integer (Python: real).
+- The equation data leaves out the Python compiler's internal names (temporaries such as `P_0`, summation scopes such as `sum_0`), which H❤️rtDown used to label in the prose's math like the paper's symbols.
+- The generated code is the Rust compiler's: NumPy and C++ classes with the same interface (an attribute per definition and optimization variable, a method per local function).
 
-**The `iheartla` submodule tracks the `main` branch.**
-- `main` contains the `mesh` branch, where the Python compiler was developed.
-- The newer compiler broke 6 of the 14 gallery papers. The fixes were committed on `mesh` (see its log): sum scopes in the equation data, `.ihla` module lookup, empty names, multiple imports from one package, symbol keywords such as `π` beginning a name (`π𝑑` is π times 𝑑), and subscripted function parameters. A parameter `D_i: ℝ^3 -> ℝ` is now a function of its subscript too (`D_i(u_i)` calls `D(i, u_i)`), as subscripted local functions already were; sequences of functions are no longer in the language. Three bugs in the generated code are fixed there too: function parameters called in local functions, parameters mistaken for another local function's, and misplaced comments.
+**The `iheartla` submodule tracks the `rust` branch.**
+- `rust` contains `main`, which contains the `mesh` branch, where the Python compiler was developed.
+- The newer Python compiler broke 6 of the 14 gallery papers. The fixes were committed on `mesh` (see its log): sum scopes in the equation data, `.ihla` module lookup, empty names, multiple imports from one package, symbol keywords such as `π` beginning a name (`π𝑑` is π times 𝑑), and subscripted function parameters. A parameter `D_i: ℝ^3 -> ℝ` is now a function of its subscript too (`D_i(u_i)` calls `D(i, u_i)`), as subscripted local functions already were; sequences of functions are no longer in the language. Three bugs in the generated code are fixed there too: function parameters called in local functions, parameters mistaken for another local function's, and misplaced comments.
 
 **The `markdown` submodule is H❤️rtDown's fork, rebased onto upstream Python-Markdown 3.11.2.**
 - The fork was Python-Markdown 3.3.4 plus about 170 H❤️rtDown commits. Its `heartdown` branch replays those commits onto 3.11.2 and ports the extensions to the 3.4+ API.

@@ -9,10 +9,12 @@ It needs Google Chrome and a network connection, and takes a few minutes, so it 
 
     uv run --group browser pytest --browser tests/test_browser.py
 """
+import base64
 import functools
 import http.server
 import json
 import threading
+import urllib.parse
 from pathlib import Path
 
 import pytest
@@ -34,19 +36,23 @@ class QuietHandler(http.server.SimpleHTTPRequestHandler):
 @pytest.fixture(scope="module")
 def editor():
     """
-    :return: open_editor(), which (re)loads the editor in a page and returns the page, once its compiler is ready
+    :return: open_editor(link=""), which (re)loads the editor in a page and returns the page, once its compiler is
+    ready. link: what follows index.html in the editor's URL, such as "?paper=<url>"
     """
     sync_playwright = pytest.importorskip("playwright.sync_api").sync_playwright
     server = http.server.ThreadingHTTPServer(("localhost", 0), functools.partial(QuietHandler, directory=DOCS_DIR))
     threading.Thread(target=server.serve_forever, daemon=True).start()
     with sync_playwright() as p:
         browser = p.chromium.launch(channel="chrome", headless=True)
-        page = browser.new_page()
+        # Share copies a link to the clipboard
+        page = browser.new_context(permissions=["clipboard-read", "clipboard-write"]).new_page()
         # Opening a demo asks before replacing the paper kept in the browser
         page.on("dialog", lambda dialog: dialog.accept())
 
-        def open_editor():
-            page.goto("http://localhost:{}/index.html".format(server.server_port))
+        def open_editor(link=""):
+            # (about:blank first: a link that changes only the fragment wouldn't reload the editor)
+            page.goto("about:blank")
+            page.goto("http://localhost:{}/index.html{}".format(server.server_port, link))
             page.wait_for_function("typeof workerReady !== 'undefined' && workerReady", timeout=LOAD_TIMEOUT)
             # Keep what the worker answers to a compile
             page.evaluate("""() => {
@@ -165,3 +171,65 @@ plt.savefig("cotangent.png")"""
     result = page.evaluate("a => ask({type: 'figure', name: 'cotangent', source: a[0], paper: a[1]})",
                            [code, paper_with_figure("requirements:\n  - python-slugify", code)])
     assert result["ok"], result["msg"]
+
+
+# A paper for links, with what URLs encode: %, #, +, and Unicode
+LINK_PAPER = "---\nfull_paper: False\n---\n# A ❤️ paper in a link\n\nIt has % and # and a+b=c, ünïcode, and $x^2$.\n"
+
+
+def wait_for_paper(page, text):
+    page.wait_for_function("text => project !== null && ace.edit('editor').getValue() === text", arg=text,
+                           timeout=LOAD_TIMEOUT)
+
+
+@pytest.mark.parametrize("link", [
+    "?paper=data:text/markdown;base64," + base64.b64encode(LINK_PAPER.encode()).decode(),
+    "?paper=" + urllib.parse.quote("data:text/markdown;base64," + base64.b64encode(LINK_PAPER.encode()).decode(), safe=""),
+    "?paper=" + urllib.parse.quote("data:text/markdown;charset=utf-8," + urllib.parse.quote(LINK_PAPER), safe=""),
+], ids=["base64", "base64, percent-encoded", "text, percent-encoded"])
+def test_data_url(editor, link):
+    page = editor(link)
+    wait_for_paper(page, LINK_PAPER)
+    # the link is then forgotten, so that reloading keeps the edits
+    assert "paper=" not in page.url
+
+
+def test_code_link(editor):
+    # links from older versions of the editor
+    page = editor("?code=" + urllib.parse.quote(LINK_PAPER, safe=""))
+    wait_for_paper(page, LINK_PAPER)
+
+
+def test_share(page):
+    # long enough that the compressed text is converted to base64 in several parts
+    text = LINK_PAPER + "".join("Line {} of the paper, {}.\n".format(i, i * i) for i in range(5000))
+    page.evaluate("text => ace.edit('editor').setValue(text, -1)", text)
+    page.evaluate("clickShare()")
+    link = page.evaluate("navigator.clipboard.readText()")
+    assert "#z=" in link and "?" not in link
+    assert len(link) < len(text) / 3
+    page.evaluate("ace.edit('editor').setValue('', -1)")
+    # pasted into this page's address bar: only the fragment changes
+    page.evaluate("link => { window.location.href = link; }", link)
+    wait_for_paper(page, text)
+    # and opened in a new page
+    page.evaluate("ace.edit('editor').setValue('', -1)")
+    page = page.context.new_page()
+    page.goto(link)
+    wait_for_paper(page, text)
+    assert "#" not in page.url
+    page.close()
+
+
+def test_damaged_link(editor):
+    page = editor("#z=bm90IGRlZmxhdGVk")
+    page.wait_for_function("document.getElementById('msg').textContent.includes('damaged')", timeout=LOAD_TIMEOUT)
+
+
+def test_edits_saved(editor):
+    # without compiling or Ctrl/⌘-S
+    page = editor()
+    page.evaluate("text => ace.edit('editor').setValue(text, -1)", LINK_PAPER + "Edited.\n")
+    page.wait_for_function("text => project.readText(project.mdPath) === text", arg=LINK_PAPER + "Edited.\n")
+    page = editor()
+    wait_for_paper(page, LINK_PAPER + "Edited.\n")

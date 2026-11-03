@@ -27,15 +27,19 @@ Served this way, the editor starts with an example paper, and you choose where p
 - **Demos** opens the basic example (the one a new paper starts from), one of the simple examples from [heartdown_examples_simple](https://github.com/iheartla/heartdown_examples_simple) (in `docs/examples/simple/`), or one of the case studies from the [H❤️rtDown gallery](https://iheartla.github.io/heartdown/CaseStudies/gallery/index.html) (all listed in `docs/examples/demos.json`).
 - **Open URL**, or a link to the editor with `?paper=<url>`, opens a paper on the web into the browser's storage. The URL can be:
   - a paper (`.md` or `.txt`): the editor also fetches its `.bib` and the files it refers to (such as `<img src="./img/fig1.png">`), relative to the paper's URL;
-  - a zip of the paper's folder.
+  - a zip of the paper's folder;
+  - a `data:` URL of the paper's text or a zip, such as `data:text/markdown;base64,…`.
 
   For example, `https://<editor>/?paper=https://iheartla.github.io/heartdown/CaseStudies/static/gallery_res/Judder/judder.txt`. The paper's server must allow other sites to load it (CORS), as GitHub Pages does. Compiling a paper runs its figure code in your browser, so compile only papers you trust.
+- **Share** copies a link to the editor with the paper's text in it, compressed, after `#z=`. Opening the link opens the paper into the browser's storage. The link has only the paper's text, not its other files. Since it's in the URL's fragment, the text isn't sent to the editor's server. Links with the text uncompressed, `?code=<the paper's text>`, open too.
+
+Wherever the paper is kept, the editor saves edits to it as you type. Ctrl/⌘-S saves right away.
 
 ### On a paper on your computer
 
     python3 server.py path/to/paper.md
 
-This opens the editor in your browser (any browser) on that paper. Compiling and saving (Ctrl/⌘-S) write the paper and everything it generates into the paper's folder. If the paper doesn't exist yet, it is created from an example. Options: `--port` (default 8000) and `--no-browser`. `server.py` only needs Python's standard library.
+This opens the editor in your browser (any browser) on that paper. Edits to the paper are saved into the paper's folder as you type, and compiling writes everything it generates there. If the paper doesn't exist yet, it is created from an example. Options: `--port` (default 8000) and `--no-browser`. `server.py` only needs Python's standard library.
 
 ### Using the editor
 

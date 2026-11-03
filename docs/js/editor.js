@@ -105,16 +105,15 @@ async function onLoad(){
         showMsg("Couldn't start the service worker for the preview: " + escapeHtml(e.message), true);
     }
     initDropTarget();
-    // The paper server.py serves comes first, then a paper in the link (?paper=<url>, or ?code=
-    // from "Copy as URL"), then the paper from last time
+    window.addEventListener("pagehide", () => savePaper());
+    window.addEventListener("hashchange", openHashLink);
+    // The paper server.py serves comes first, then a paper in the link (see linkedPaper), then the paper from last time
     const local = await openLocalProject();
     if (local) {
         await setProject(local, false);
         return;
     }
-    const params = new URL(window.location.href).searchParams;
-    const code = params.get("code");
-    const paperURL = params.get("paper");
+    const linked = await linkedPaper();
     let restored = null;
     try {
         restored = await restoreProject();
@@ -127,12 +126,12 @@ async function onLoad(){
     }
     const replaceRestored = () => !hasEdits(restored) ||
         confirm("You've edited the paper kept in this browser. Replace it with the one in this link?");
-    if (paperURL !== null && replaceRestored()) {
-        await openPaperURL(paperURL, restored);
-    } else if (code !== null && (restored && !restored.reopen && restored.mode === "browser" &&
-                                 restored.readText(restored.mdPath) === code || replaceRestored())) {
-        await setProject(await newBrowserProject("paper.md", code));
-        forgetLink();
+    if (linked && linked.url !== undefined && replaceRestored()) {
+        await openPaperURL(linked.url, restored);
+    } else if (linked && linked.text !== undefined &&
+               (restored && !restored.reopen && restored.mode === "browser" &&
+                restored.readText(restored.mdPath) === linked.text || replaceRestored())) {
+        await openPaperText(linked.text);
     } else if (restored && restored.reopen) {
         reopenHandle = restored.reopen;
         updateProjectInfo();
@@ -143,10 +142,64 @@ async function onLoad(){
     } else {
         await setProject(await newBrowserProject("paper.md", await (await fetch(STARTER)).text()));
     }
+    if (linked && linked.error) {
+        forgetLink();
+        showMsg(escapeHtml(linked.error), true);
+    }
+}
+
+// The paper in the link, or null: {url} for ?paper=<url> (a data: URL too), or {text} for the paper's text,
+// from Share (#z=<the text, compressed>) or ?code=<the text> (older links), or {error} if it can't be read.
+// Each may be in the query (?) or the fragment (#).
+async function linkedPaper() {
+    const url = new URL(window.location.href);
+    const params = new URLSearchParams(url.hash.slice(1));
+    for (const [key, value] of url.searchParams) {
+        if (!params.has(key)) params.set(key, value);
+    }
+    if (params.has("z")) {
+        try {
+            return { text: await decompressText(params.get("z")) };
+        } catch (e) {
+            return { error: "The link's paper is damaged (it may have been cut off): " + e.message };
+        }
+    }
+    if (params.has("code")) return { text: params.get("code") };
+    let paper = params.get("paper");
+    if (paper === null) return null;
+    // A base64 data: URL that wasn't percent-encoded: its +s came as spaces
+    if (/^data:[^,]*;base64,/i.test(paper)) paper = paper.replace(/ /g, "+");
+    return { url: paper };
+}
+
+// A link pasted into the address bar of this page changes only its fragment
+async function openHashLink() {
+    const linked = await linkedPaper();
+    if (linked === null) return;
+    if (!confirmReplaceBrowserProject()) {
+        forgetLink();
+    } else if (linked.error) {
+        forgetLink();
+        showMsg(escapeHtml(linked.error), true);
+    } else if (linked.url !== undefined) {
+        await openPaperURL(linked.url);
+    } else {
+        await openPaperText(linked.text);
+    }
+}
+
+// A new browser paper with this text, from a link
+async function openPaperText(text) {
+    await setProject(await newBrowserProject("paper.md", text));
+    forgetLink();
+    showMsg("Loaded the paper in the link. Compiling runs the paper's figure code in your browser, so compile only papers you trust.",
+            false, true);
 }
 
 // Switch to another paper folder
 async function setProject(newProject, remember = true) {
+    // the last edits to the paper being closed
+    await savePaper();
     if (project !== null && worker !== null) {
         await ask({ type: "reset" }).catch(e => console.log(e));
     }
@@ -226,6 +279,8 @@ function forgetLink() {
     const url = new URL(window.location.href);
     url.searchParams.delete("paper");
     url.searchParams.delete("code");
+    url.searchParams.delete("z");
+    url.hash = "";
     history.replaceState(null, "", url);
 }
 
@@ -233,12 +288,12 @@ function forgetLink() {
 // loaded: the message once it's open (HTML), if not the warning for papers from anywhere
 // files: other files to fetch with it (see openURLProject)
 async function openPaperURL(url, fallback = null, loaded = null, files = []) {
-    showMsg(`Loading ${escapeHtml(url)}…`, false, true);
+    showMsg(`Loading ${escapeHtml(urlLabel(url))}…`, false, true);
     try {
         await setProject(await openURLProject(url, files));
         forgetLink();
         // Its figure code runs in this page when it's compiled
-        showMsg(loaded || `Loaded ${escapeHtml(url)}. Compiling runs the paper's figure code in your browser, so compile only papers you trust.`,
+        showMsg(loaded || `Loaded ${escapeHtml(urlLabel(url))}. Compiling runs the paper's figure code in your browser, so compile only papers you trust.`,
                 false, true);
     } catch (e) {
         if (project === null) {
@@ -355,10 +410,37 @@ function confirmReplaceBrowserProject() {
         confirm("This replaces the paper kept in this browser, which you've edited, and its files. Download a zip of them first if you need them. Continue?");
 }
 
+// The paper is saved shortly after each edit (and before the page closes), one save at a time
+const SAVE_DELAY = 500;
+let saveTimer = null;
+let saving = Promise.resolve();
+
+function scheduleSave() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(savePaper, SAVE_DELAY);
+}
+
+// Save the editor's text as the paper, if it changed. Resolves once it's saved.
+function savePaper() {
+    clearTimeout(saveTimer);
+    saveTimer = null;
+    saving = saving.then(async () => {
+        if (project === null) return;
+        const text = ace.edit("editor").getValue();
+        if (text === project.readText(project.mdPath)) return;
+        try {
+            await project.write(project.mdPath, text);
+        } catch (e) {
+            showMsg("Couldn't save the paper: " + escapeHtml(e.message), true);
+        }
+    });
+    return saving;
+}
+
+// Ctrl/⌘-S: save now (it's saved anyway)
 async function clickSave() {
     if (project === null) return;
-    latestSource = ace.edit("editor").getValue();
-    await project.write(project.mdPath, latestSource);
+    await savePaper();
     showMsg(project.mode === "browser" ? `Saved ${escapeHtml(project.mdPath)} in this browser` : `Saved ${escapeHtml(project.mdPath)}`);
 }
 
@@ -383,7 +465,7 @@ function clickDownloadCode(file) {
 }
 
 async function clickDownloadZip() {
-    await project.write(project.mdPath, ace.edit("editor").getValue());
+    await savePaper();
     download(zipProject(project), `${project.paperName}.zip`);
 }
 
@@ -461,8 +543,7 @@ async function compileFunction(){
     let editor = ace.edit("editor");
     const source = editor.getValue();
     latestSource = source;
-    // Save the paper, as the server did on every compile
-    await project.write(project.mdPath, source);
+    await savePaper();
     const data = await ask({ type: "compile", name: project.paperName, source });
     if (data.ret === 0) {
         curFileName = data.name;
@@ -607,22 +688,38 @@ function onClickFigure(ele, name){
     $('#testEditor').modal('show');
 }
 
-function clickCopy() {
-    // Base the URL off the current one.
+// Copy a link to the editor with the paper's text in it, compressed, in the fragment (#z=), which
+// isn't sent to the server: no limit on its length but the browser's, and the server doesn't see the paper
+async function clickShare() {
     const url = new URL(window.location.href);
-    const source = editor.getValue();
-    url.searchParams.set( "code", source );
-    
-    navigator.clipboard.writeText( url.toString() ).then(function() {
-        /* clipboard successfully set */
-        showMsg( "Copied a shareable code URL to the clipboard." );
-    }, function() {
-        /* clipboard write failed */
-        showMsg( "Failed to copy to the clipboard." );
-    });
-    
-    
-    
+    url.search = "";
+    url.hash = "z=" + await compressText(ace.edit("editor").getValue());
+    const link = url.href;
+    const others = project !== null && project.files.size > 1 ? " It has only the paper's text, not its other files." : "";
+    try {
+        await navigator.clipboard.writeText(link);
+        showMsg(`Copied a link to this paper to the clipboard.${others}`);
+    } catch (e) {
+        prompt(`Copy this link to the paper.${others}`, link);
+    }
+}
+
+// text, deflated, in base64url
+async function compressText(text) {
+    const stream = new Blob([encoder.encode(text)]).stream().pipeThrough(new CompressionStream("deflate-raw"));
+    const bytes = new Uint8Array(await new Response(stream).arrayBuffer());
+    let binary = "";
+    for (let i = 0; i < bytes.length; i += 0x8000) {
+        binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    }
+    return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+async function decompressText(base64url) {
+    const binary = atob(base64url.replace(/-/g, "+").replace(/_/g, "/"));
+    const bytes = Uint8Array.from(binary, c => c.charCodeAt(0));
+    const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+    return decoder.decode(await new Response(stream).arrayBuffer());
 }
 
 // msg is HTML: escape text from elsewhere (escapeHtml). A sticky notice stays until the next message or edit.

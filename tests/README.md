@@ -23,7 +23,7 @@ without the images, PDFs and generated files.
 
 ## The editor's demos
 
-`test_browser.py` opens each demo in the in-browser editor's Demos menu (`docs/examples/demos.json`), compiles it and checks that it and its figures succeed, in headless Google Chrome. It tests what only the editor does: the compiler in Pyodide, figure code with Pyodide's packages (some from its CDN or PyPI), and the Demos menu fetching papers and their files. It doesn't compare the output with expected files. It also checks that figures get the packages they need from PyPI: libigl for `import igl`, and the requirements a paper's front matter lists, when compiling the paper or running one figure.
+`test_browser.py` opens each demo in the in-browser editor's Demos menu (`docs/examples/demos.json`), compiles it and checks that it and its figures succeed, in headless Google Chrome. It tests what only the editor does: the compiler in Pyodide, figure code with Pyodide's packages (some from its CDN or PyPI), and the Demos menu fetching papers and their files. It doesn't compare the output with expected files. It also checks that figures get the packages they need from PyPI: libigl for `import igl`, and the requirements a paper's front matter lists, when compiling the paper or running one figure. And it checks the papers in links: `data:` URLs, **Share** links and older `?code=` links, and that edits are saved without compiling.
 
 It needs Google Chrome and a network connection and takes a few minutes, so it runs only with `--browser`:
 

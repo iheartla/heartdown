@@ -312,8 +312,15 @@ function referencedPaths(text) {
     return [...paths];
 }
 
+// How to name a URL in messages: a data: URL is the paper itself
+function urlLabel(url) {
+    url = String(url);
+    return url.startsWith("data:") ? "the data: URL" : url;
+}
+
 // A paper from a URL: a .md or .txt file (with the files it refers to, fetched relative to
-// it), or a .zip of its folder. Throws with a message if it can't be loaded.
+// it), or a .zip of its folder. A data: URL is the paper or zip itself, with nothing relative to it.
+// Throws with a message if it can't be loaded.
 // files: paths of other files to fetch with a paper (not a zip), relative to it, such as the modules its figure code imports
 async function openURLProject(url, files = []) {
     url = new URL(url, document.baseURI);
@@ -321,20 +328,25 @@ async function openURLProject(url, files = []) {
     try {
         response = await fetch(url);
     } catch (e) {
-        throw new Error(`Couldn't load ${url}. (Its server must allow other sites to load it: CORS.)`);
+        throw new Error(`Couldn't load ${urlLabel(url)}. (Its server must allow other sites to load it: CORS.)`);
     }
-    if (!response.ok) throw new Error(`Couldn't load ${url}: ${response.status} ${response.statusText}`);
+    if (!response.ok) throw new Error(`Couldn't load ${urlLabel(url)}: ${response.status} ${response.statusText}`);
     const bytes = new Uint8Array(await response.arrayBuffer());
-    const name = decodeURIComponent(url.pathname.slice(url.pathname.lastIndexOf("/") + 1)) || "paper.md";
+    const data = url.protocol === "data:";
+    const name = data ? "paper.md" : decodeURIComponent(url.pathname.slice(url.pathname.lastIndexOf("/") + 1)) || "paper.md";
     if (bytes[0] === 0x50 && bytes[1] === 0x4B && bytes[2] === 0x03 && bytes[3] === 0x04) {
         // a zip of the paper's folder
         const files = await unzip(bytes);
-        const project = new Project("browser", name.replace(/\.zip$/i, ""), files);
+        const project = new Project("browser", data ? "browser" : name.replace(/\.zip$/i, ""), files);
         await saveBrowserProject(project);
         return project;
     }
-    const project = new Project("browser", url.host, new Map([[name, bytes]]));
+    const project = new Project("browser", data ? "browser" : url.host, new Map([[name, bytes]]));
     project.mdPath = name;
+    if (data) {
+        await saveBrowserProject(project);
+        return project;
+    }
     project.baseURL = new URL(".", url).href;
     // the bibliography and the files the paper refers to, if they're there
     const stem = name.slice(0, name.lastIndexOf(".")) || name;

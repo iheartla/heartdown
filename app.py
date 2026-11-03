@@ -15,7 +15,7 @@ import sys
 STDLIB_RE = sys.modules['re']  # before iheartla replaces it with `regex`
 from iheartla.la_tools.la_helper import *
 from iheartla.la_tools.la_logger import LaLogger
-from iheartla.la_parser.parser import ParserTypeEnum, LaMsg
+from iheartla.la_tools.la_msg import LaMsg
 import markdown
 import markdown.extensions
 from markdown.core import *

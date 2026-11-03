@@ -35,10 +35,9 @@ const status = (text) => self.postMessage({ status: text });
 const ready = (async () => {
     const pyodide = await loadPyodide({ indexURL: local });
     status("Loading the compiler…");
-    await pyodide.loadPackage(["micropip", "regex", "sympy", "pyyaml"]);
-    pyodide.globals.set("wheels", [local + "appdirs-1.4.4-py2.py3-none-any.whl",
-                                   local + "tatsu-5.14.0-py3-none-any.whl",
-                                   local + "latexcodec-3.0.1-py3-none-any.whl",
+    // (not TatSu or SymPy: H❤️rtDown compiles with the Rust compiler and imports no part of the Python one that needs them)
+    await pyodide.loadPackage(["micropip", "regex", "pyyaml"]);
+    pyodide.globals.set("wheels", [local + "latexcodec-3.0.1-py3-none-any.whl",
                                    local + "pybtex-0.26.1-py3-none-any.whl"]);
     await pyodide.runPythonAsync("import micropip\nawait micropip.install(wheels.to_py(), deps=False)");
     const zip = await (await fetch(bundle)).arrayBuffer();

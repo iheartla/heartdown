@@ -3,104 +3,61 @@
 #include <Eigen/QR>
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
+#include <Eigen/SVD>
 #include <iostream>
 #include <set>
+#include <vector>
+#include <tuple>
+#include <functional>
 #include <algorithm>
+#include <cmath>
+#include <stdexcept>
+#ifndef IHEARTLA_SORTED_SET
+#define IHEARTLA_SORTED_SET
+// sets are sorted vectors without duplicates (defined before the last #include:
+// code that wraps the generated code in a namespace starts it after that)
+template<typename T> std::vector<T> sorted_set(std::vector<T> v) { std::sort(v.begin(), v.end()); v.erase(std::unique(v.begin(), v.end()), v.end()); return v; }
+// (vectors in lexicographic order)
+template<typename S, int R, int C, int O, int MR, int MC> std::vector<Eigen::Matrix<S, R, C, O, MR, MC>> sorted_set(std::vector<Eigen::Matrix<S, R, C, O, MR, MC>> v) {
+using M = Eigen::Matrix<S, R, C, O, MR, MC>;
+std::sort(v.begin(), v.end(), [](const M & a, const M & b){ return std::lexicographical_compare(a.data(), a.data() + a.size(), b.data(), b.data() + b.size()); });
+v.erase(std::unique(v.begin(), v.end(), [](const M & a, const M & b){ return a.size() == b.size() && (a.array() == b.array()).all(); }), v.end());
+return v;
+}
+#endif
+#include <unsupported/Eigen/MatrixFunctions>
+
 #include <LBFGS.h>
 #include <LBFGSB.h>
-#include <limits>
-#include <stdexcept>
-#include "type_helper.h"
 
 struct MeshSmoothing {
     using DT = double;
-    using MatrixD = Eigen::MatrixXd;
-    using VectorD = Eigen::VectorXd;
-    DT ret;
-    Eigen::Matrix<double, Eigen::Dynamic, 3> V;
+    Eigen::MatrixXd V;
     Eigen::SparseMatrix<double> L;
     double λ;
-    template<typename REAL>
-    REAL E_textdata(
-        const Eigen::Matrix<REAL, Eigen::Dynamic, 3> & U)
-    {
-        const long n = U.rows();
-        assert( U.cols() == 3 );
+    long n;
+    double ret;
 
-        return pow((U - this->V).norm(), 2);    
-    }
-    template<typename REAL>
-    REAL E_textsmoothness(
-        const Eigen::Matrix<REAL, Eigen::Dynamic, 3> & U)
+    MeshSmoothing() {}
+    MeshSmoothing(const Eigen::MatrixXd & V, const Eigen::SparseMatrix<double> & L, const double & λ)
     {
-        const long n = U.rows();
-        assert( U.cols() == 3 );
-
-        return (U.transpose() * this->L * U).trace();    
-    }
-    MeshSmoothing(
-        const Eigen::Matrix<double, Eigen::Dynamic, 3> & V,
-        const Eigen::SparseMatrix<double> & L,
-        const double & λ)
-    {
-        const long n = V.rows();
-        assert( V.cols() == 3 );
-        assert( L.rows() == n );
-        assert( L.cols() == n );
         this->V = V;
         this->L = L;
         this->λ = λ;
-        auto unpack = [&](const VectorD & X_1, Eigen::Matrix<DT, Eigen::Dynamic, 3> & U)
-        {
-            U = Eigen::Map<const Eigen::Matrix<DT, Eigen::Dynamic, 3>>(X_1.data() + 0, n, 3);
-        };
-        auto target_1 = [&](const VectorD & X_1)
-        {
-            Eigen::Matrix<DT, Eigen::Dynamic, 3> U;
-            unpack(X_1, U);
-            return DT((1 - λ) * E_textdata((U).eval()) + λ * E_textsmoothness((U).eval()));
-        };
-        VectorD best_X;
-        DT best_f = std::numeric_limits<DT>::infinity();
-        auto helper = [&](const VectorD & X_1, VectorD & grad)
-        {
-            VectorD Xh = X_1;
-            for(int k = 0; k < X_1.size(); ++k)
-            {
-                const DT h = 1e-6 * std::max(DT(1), std::abs(X_1(k)));
-                Xh(k) = X_1(k) + h;
-                const DT f_plus = target_1(Xh);
-                Xh(k) = X_1(k) - h;
-                const DT f_minus = target_1(Xh);
-                Xh(k) = X_1(k);
-                grad(k) = (f_plus - f_minus) / (2 * h);
-            }
-            const DT f = target_1(X_1);
-            if(f < best_f){ best_f = f; best_X = X_1; }  // the best point evaluated, kept if the line search gives up
-            return f;
-        };
-        VectorD lower = VectorD::Constant(3*n, -std::numeric_limits<DT>::infinity());
-        VectorD upper = VectorD::Constant(3*n, std::numeric_limits<DT>::infinity());
-        VectorD init = VectorD::Zero(3*n);
-        init = init.cwiseMax(lower).cwiseMin(upper);
-        DT fx;
-        LBFGSpp::LBFGSParam<DT> param;
-        param.epsilon = 1e-8;
-        param.max_iterations = 1000;
-        LBFGSpp::LBFGSSolver<DT> solver(param);
-        try
-        {
-            solver.minimize(helper, init, fx);
-        }
-        catch(const std::runtime_error &)
-        {
-            // LBFGSpp's line search could not decrease the objective further (e.g. near a
-            // nonsmooth or exactly zero minimum): use the best point evaluated
-            if(!(best_f < std::numeric_limits<DT>::infinity())) throw;
-        }
-        init = best_X;
-        fx = best_f;
-        ret = fx;
+        this->n = V.rows();
+        assert( V.rows() == this->n && V.cols() == 3 );
+        // min_( U ∈ ℝ^(n×3) ) (1-λ) `E_\text{data}`(U) + λ `E_\text{smoothness}`(U)
+        this->ret = [&]() -> double { const int N = 0 + (this->n)*(3); auto objective = [&](const Eigen::VectorXd & X) -> double { const Eigen::MatrixXd U = Eigen::Map<const Eigen::MatrixXd>(X.data() + (0), this->n, 3); return (double((1 - this->λ) * this->E_textdata(U) + this->λ * this->E_textsmoothness(U))); }; double best_f = std::numeric_limits<double>::infinity(); Eigen::VectorXd best_x; auto f = [&](const Eigen::VectorXd & X, Eigen::VectorXd & grad) -> double { Eigen::VectorXd Y = X; for(int k = 0; k < X.size(); k++){ const double h = 1e-6 * std::max(1.0, std::abs(X(k))); Y(k) = X(k) + h; const double fp = objective(Y); Y(k) = X(k) - h; const double fm = objective(Y); Y(k) = X(k); grad(k) = (fp - fm) / (2 * h); } const double value = objective(X); if(value < best_f){ best_f = value; best_x = X; } return value; }; Eigen::VectorXd x = Eigen::VectorXd::Zero(N); LBFGSpp::LBFGSParam<double> param; param.epsilon = 1e-10; param.max_iterations = 1000; LBFGSpp::LBFGSSolver<double> solver(param); double fx; try { solver.minimize(f, x, fx); } catch(const std::runtime_error &) { if(best_x.size() == 0) throw; x = best_x; fx = best_f; } return fx; }();
+    }
+
+    double E_textdata(const Eigen::MatrixXd & U)
+    {
+        return pow((U - this->V).norm(), 2);
+    }
+
+    double E_textsmoothness(const Eigen::MatrixXd & U)
+    {
+        return ((U.transpose() * this->L) * U).trace();
     }
 };
 

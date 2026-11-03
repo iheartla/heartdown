@@ -2,17 +2,15 @@
 # docs/js/pyodide/, so the editor doesn't depend on a server, a CDN or PyPI.
 # Usage: sh docs/update_pyodide.sh   (then rebuild the Python bundle: sh docs/update_python.sh)
 #
-# Vendored: what compiling a paper needs (the I❤️LA compiler and the Markdown
-# pipeline) and what figure code usually needs (NumPy, SciPy, Matplotlib; the
+# Vendored: what compiling a paper needs (the Markdown pipeline; the I❤️LA
+# compiler is WebAssembly, in heartdown-py.zip) and what figure code usually needs (NumPy, SciPy, Matplotlib; the
 # generated lib.py imports NumPy and SciPy). Any other Pyodide package a figure
 # imports (e.g. scikit-image) stays in pyodide-lock.json with its CDN URL, so it
 # loads from the CDN on first use.
 set -e
 PYODIDE=314.0.7
 CDN="https://cdn.jsdelivr.net/pyodide/v$PYODIDE/full/"
-# pure-Python wheels from PyPI; keep TATSU within the range in iheartla's pyproject.toml
-TATSU=5.14.0
-APPDIRS=1.4.4
+# pure-Python wheels from PyPI
 PYBTEX=0.26.1
 LATEXCODEC=3.0.1
 cd "$(dirname "$0")/js"
@@ -27,7 +25,7 @@ for f in $(CDN="$CDN" python3 - <<'PY'
 import json, os
 lock = json.load(open("pyodide/pyodide-lock.json"))
 pkgs = lock["packages"]
-need, todo = set(), ["micropip", "regex", "sympy", "pyyaml", "numpy", "scipy", "matplotlib"]
+need, todo = set(), ["micropip", "regex", "pyyaml", "numpy", "scipy", "matplotlib"]
 while todo:
     n = todo.pop()
     if n not in need:
@@ -45,8 +43,6 @@ done
 pypi() {  # wheel file name -> pyodide/
     curl -fsSL -o "pyodide/$1" "https://files.pythonhosted.org/packages/$2/$(echo "$1" | cut -c1)/$(echo "$1" | cut -d- -f1)/$1"
 }
-pypi tatsu-$TATSU-py3-none-any.whl py3
-pypi appdirs-$APPDIRS-py2.py3-none-any.whl py2.py3
 pypi pybtex-$PYBTEX-py3-none-any.whl py3
 pypi latexcodec-$LATEXCODEC-py3-none-any.whl py3
 du -sh pyodide

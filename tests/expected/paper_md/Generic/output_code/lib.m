@@ -11,24 +11,18 @@ function output = Generic(J, x, y, u, v)
 %    y: ℝ : point coordinate
 %    u: ℝ : vector field coordinate
 %    v: ℝ : vector field coordinate
-%    
-%    
     assert( isequal(size(J), [2, 2]) );
-    assert(numel(x) == 1);
-    assert(numel(y) == 1);
-    assert(numel(u) == 1);
-    assert(numel(v) == 1);
-
+    assert( numel(x) == 1 );
+    assert( numel(y) == 1 );
+    assert( numel(u) == 1 );
+    assert( numel(v) == 1 );
+    
     % `$x_p$` = (-y, x)
-
     x_p = [-y; x];
     % `$v_p$` = (-v, u)
-
     v_p = [-v; u];
     % M=[-J`$x_p$`+`$v_p$`  J  `$x_p$`  I_2]
-
-    M_0 = [[reshape(-J * x_p + v_p, [2, 1]), J, reshape(x_p, [2, 1]), speye(2)]];
-    M = M_0;
+    M = [[-(J * x_p) + v_p, J, x_p, eye(2)]];
     output.x_p = x_p;
     output.v_p = v_p;
     output.M = M;

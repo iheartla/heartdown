@@ -3,151 +3,138 @@
 #include <Eigen/QR>
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
+#include <Eigen/SVD>
 #include <iostream>
 #include <set>
+#include <vector>
+#include <tuple>
+#include <functional>
 #include <algorithm>
-#include "type_helper.h"
+#include <cmath>
+#include <stdexcept>
+#ifndef IHEARTLA_SORTED_SET
+#define IHEARTLA_SORTED_SET
+// sets are sorted vectors without duplicates (defined before the last #include:
+// code that wraps the generated code in a namespace starts it after that)
+template<typename T> std::vector<T> sorted_set(std::vector<T> v) { std::sort(v.begin(), v.end()); v.erase(std::unique(v.begin(), v.end()), v.end()); return v; }
+// (vectors in lexicographic order)
+template<typename S, int R, int C, int O, int MR, int MC> std::vector<Eigen::Matrix<S, R, C, O, MR, MC>> sorted_set(std::vector<Eigen::Matrix<S, R, C, O, MR, MC>> v) {
+using M = Eigen::Matrix<S, R, C, O, MR, MC>;
+std::sort(v.begin(), v.end(), [](const M & a, const M & b){ return std::lexicographical_compare(a.data(), a.data() + a.size(), b.data(), b.data() + b.size()); });
+v.erase(std::unique(v.begin(), v.end(), [](const M & a, const M & b){ return a.size() == b.size() && (a.array() == b.array()).all(); }), v.end());
+return v;
+}
+#endif
+#include <unsupported/Eigen/MatrixFunctions>
 
 struct pipeline {
     using DT = double;
-    using MatrixD = Eigen::MatrixXd;
-    using VectorD = Eigen::VectorXd;
-    Eigen::Matrix<DT, 1, 3> textbfX;
-    DT ϕ;
-    DT D;
-    DT γ;
-    Eigen::Matrix<DT, 3, 3> K;
-    Eigen::Matrix<DT, 3, 1> textbft;
-    DT A;
-    DT B;
-    DT C;
-    DT α_1;
-    DT α_2;
-    double α_i;
-    double α_j;
+    double f_x;
+    double f_y;
+    double c_x;
+    double c_y;
+    double r;
     std::function<Eigen::Matrix<double, 2, 1>(Eigen::Matrix<double, 2, 1>)> φ_circumflex_accent_1_d;
     std::function<Eigen::Matrix<double, 2, 1>(Eigen::Matrix<double, 2, 1>)> φ_d;
     Eigen::Matrix<double, 2, 1> x_i;
     Eigen::Matrix<double, 2, 1> x_j;
-    double x;
-    double c_x;
-    double f_x;
+    double α_i;
+    double α_j;
     double y;
-    double c_y;
-    template<typename REAL>
-    Eigen::Matrix<REAL, 3, 3> R(
-        const REAL & α)
+    double X;
+    double Y;
+    double Z;
+    double x;
+    Eigen::Matrix<double, 1, 3> textbfX;
+    Eigen::Matrix<double, 3, 3> K;
+    Eigen::Matrix<double, 3, 1> textbft;
+    double A;
+    double B;
+    double D;
+    double γ;
+    double C;
+    double ϕ;
+    double α_1;
+    double α_2;
+
+    pipeline() {}
+    pipeline(const double & f_x, const double & f_y, const double & c_x, const double & c_y, const double & r, const std::function<Eigen::Matrix<double, 2, 1>(Eigen::Matrix<double, 2, 1>)> & φ_circumflex_accent_1_d, const std::function<Eigen::Matrix<double, 2, 1>(Eigen::Matrix<double, 2, 1>)> & φ_d, const Eigen::Matrix<double, 2, 1> & x_i, const Eigen::Matrix<double, 2, 1> & x_j, const double & α_i, const double & α_j, const double & y, const double & X, const double & Y, const double & Z, const double & x)
     {
-        Eigen::Matrix<REAL, 3, 3> R_0;
-        R_0 << -sin(α), 0, -cos(α),
-        0, 1, 0,
-        cos(α), 0, -sin(α);
-        return R_0;    
-    }
-    template<typename REAL>
-    Eigen::Matrix<REAL, 3, 4> P(
-        const REAL & α)
-    {
-        Eigen::Matrix<REAL, 3, 4> P_0;
-        P_0 << R(α), this->textbft;
-        return this->K * P_0;    
-    }
-    template<typename REAL>
-    REAL t(
-        const REAL & α)
-    {
-        return (α - this->α_i) / REAL((this->α_j - this->α_i));    
-    }
-    template<typename REAL>
-    Eigen::Matrix<REAL, 2, 1> textbfx(
-        const REAL & α)
-    {
-        return this->φ_circumflex_accent_1_d(((1 - t(α)) * this->φ_d((this->x_i).eval()) + t(α) * this->φ_d((this->x_j).eval())).eval());    
-    }
-    template<typename REAL>
-    REAL ω(
-        const REAL & x)
-    {
-        return atan((x - this->c_x) / REAL(this->f_x));    
-    }
-    template<typename REAL>
-    REAL s(
-        const REAL & x)
-    {
-        return (this->y - this->c_y) * cos(ω(x));    
-    }
-    template<typename REAL>
-    Eigen::Matrix<REAL, 2, 1> φ(
-        const REAL & x)
-    {
-        Eigen::Matrix<REAL, 2, 1> φ_0;
-        φ_0 << ω(x), s(x);
-        return φ_0;    
-    }
-    pipeline(
-        const double & f_x,
-        const double & f_y,
-        const double & c_x,
-        const double & c_y,
-        const double & r,
-        const std::function<Eigen::Matrix<double, 2, 1>(Eigen::Matrix<double, 2, 1>)> & φ_circumflex_accent_1_d,
-        const std::function<Eigen::Matrix<double, 2, 1>(Eigen::Matrix<double, 2, 1>)> & φ_d,
-        const Eigen::Matrix<double, 2, 1> & x_i,
-        const Eigen::Matrix<double, 2, 1> & x_j,
-        const double & α_i,
-        const double & α_j,
-        const double & y,
-        const double & X,
-        const double & Y,
-        const double & Z,
-        const double & x)
-    {
-    
-        this->α_i = α_i;
-        this->α_j = α_j;
+        this->f_x = f_x;
+        this->f_y = f_y;
+        this->c_x = c_x;
+        this->c_y = c_y;
+        this->r = r;
         this->φ_circumflex_accent_1_d = φ_circumflex_accent_1_d;
         this->φ_d = φ_d;
         this->x_i = x_i;
         this->x_j = x_j;
-        this->x = x;
-        this->c_x = c_x;
-        this->f_x = f_x;
+        this->α_i = α_i;
+        this->α_j = α_j;
         this->y = y;
-        this->c_y = c_y;
+        this->X = X;
+        this->Y = Y;
+        this->Z = Z;
+        this->x = x;
         // `$\textbf{X}$` = (X,Y,Z)^T
-        Eigen::Matrix<DT, 3, 1> textbfX_0;
-        textbfX_0 << X, Y, Z;
-        textbfX = textbfX_0.transpose();
+        this->textbfX = [&](){ Eigen::Matrix<double, 3, 1> v(3); v << this->X, this->Y, this->Z; return v; }().transpose();
         // K = [`$f_x$` 0 `$c_x$`
         //       0   `$f_y$` `$c_y$`
         //       0      0    1]
-        Eigen::Matrix<DT, 3, 3> K_0;
-        K_0 << f_x, 0, c_x,
-        0, f_y, c_y,
-        0, 0, 1;
-        K = K_0;
+        this->K = [&](){ Eigen::MatrixXd m(3, 3); m << this->f_x, 0, this->c_x, 0, this->f_y, this->c_y, 0, 0, 1; return m; }();
         // `$\textbf{t}$` = [0;0;-r]
-        Eigen::Matrix<DT, 3, 1> textbft_0;
-        textbft_0 << 0,
-        0,
-        -r;
-        textbft = textbft_0;
+        this->textbft = [&](){ Eigen::MatrixXd m(3, 1); m << 0, 0, -this->r; return m; }();
         // A = X ⋅ `$f_x$` - Z⋅(x - `$c_x$` )
-        A = X * f_x - Z * (x - c_x);
+        this->A = this->X * this->f_x - this->Z * (this->x - this->c_x);
         // B = Z⋅`$f_x$` + X⋅(x -`$c_x$` )
-        B = Z * f_x + X * (x - c_x);
+        this->B = this->Z * this->f_x + this->X * (this->x - this->c_x);
         // D = √(A^2 +B^2)
-        D = sqrt((pow(A, 2) + pow(B, 2)));
+        this->D = sqrt(pow(this->A, 2) + pow(this->B, 2));
         // γ = arctan(B/A)
-        γ = atan(B / DT(A));
+        this->γ = atan(this->B / this->A);
         // C = -r⋅(x -`$c_x$` )
-        C = -r * (x - c_x);
+        this->C = -(this->r * (this->x - this->c_x));
         // ϕ = arcsin(C/D)
-        ϕ = asin(C / DT(D));
+        this->ϕ = asin(this->C / this->D);
         // `$α_1$` = ϕ - γ
-        α_1 = ϕ - γ;
+        this->α_1 = this->ϕ - this->γ;
         // `$α_2$` = π - ϕ - γ
-        α_2 = M_PI - ϕ - γ;
+        this->α_2 = M_PI - this->ϕ - this->γ;
+    }
+
+    Eigen::Matrix<double, 3, 3> R(const double & α)
+    {
+        return [&](){ Eigen::MatrixXd m(3, 3); m << -sin(α), 0, -cos(α), 0, 1, 0, cos(α), 0, -sin(α); return m; }();
+    }
+
+    Eigen::Matrix<double, 3, 4> P(const double & α)
+    {
+        return this->K * [&](){ Eigen::MatrixXd m(3, 4); m << this->R(α), this->textbft; return m; }();
+    }
+
+    double t(const double & α)
+    {
+        return (α - this->α_i) / (this->α_j - this->α_i);
+    }
+
+    Eigen::Matrix<double, 2, 1> textbfx(const double & α)
+    {
+        return this->φ_circumflex_accent_1_d((1 - this->t(α)) * this->φ_d(this->x_i) + this->t(α) * this->φ_d(this->x_j));
+    }
+
+    double ω(const double & x)
+    {
+        return atan((x - this->c_x) / this->f_x);
+    }
+
+    double s(const double & x)
+    {
+        return (this->y - this->c_y) * cos(this->ω(x));
+    }
+
+    Eigen::Matrix<double, 2, 1> φ(const double & x)
+    {
+        return [&](){ Eigen::Matrix<double, 2, 1> v(2); v << this->ω(x), this->s(x); return v; }();
     }
 };
 

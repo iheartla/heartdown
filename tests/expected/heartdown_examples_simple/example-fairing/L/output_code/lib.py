@@ -11,40 +11,40 @@ class fairing:
         E = frozenset(E)
         B = np.asarray(B, dtype=np.int64)
         V = np.asarray(V, dtype=np.float64)
-        assert all( len(el) == 2 for el in E )
         assert np.ndim(n) == 0
         assert B.shape == (n,)
         assert V.shape == (n, 3)
+        self.E = E
+        self.n = n
+        self.B = B
+        self.V = V
         # w=10^6
-        self.w = np.power(np.asarray(10, dtype=np.float64), 6)
+        self.w = 10**6
         # A_ij = { 1 if (i,j) ∈ E
         #          1 if (j,i) ∈ E
         #          0 otherwise
-        Aij_0 = []
-        Avals_0 = []
-        for tuple in E:
-            i = tuple[0]+1
-            j = tuple[1]+1
-            Aij_0.append((i-1, j-1))
-            Avals_0.append(1)
-        for tuple_1 in E:
-            j = tuple_1[0]+1
-            i = tuple_1[1]+1
-            Aij_0.append((i-1, j-1))
-            Avals_0.append(1)
-        sparse_0 = scipy.sparse.coo_matrix((Avals_0, np.asarray(Aij_0).T), shape=(n, n))
-        self.A = sparse_0
-        Dii_0 = []
-        Dvals_0 = []
+        dense_1 = np.zeros((n, n))
         for i in range(1, n+1):
-            sum_0 = 0
-            for j in range(1, self.A.shape[1]+1):
-                sum_0 += self.A.tocsr()[i-1, j-1]
-            Dii_0.append((i - 1, i - 1))
-            Dvals_0.append(sum_0)
-        self.D = scipy.sparse.coo_matrix((Dvals_0, np.asarray(Dii_0).T), shape=(n, n))
+            for j in range(1, n+1):
+                ret_2 = 0
+                if (i-1, j-1) in E:
+                    ret_2 = 1
+                elif (j-1, i-1) in E:
+                    ret_2 = 1
+                else:
+                    ret_2 = 0
+                dense_1[i-1, j-1] = ret_2
+        self.A = sparse.csr_matrix(dense_1)
+        # D_ii = ∑_j A_ij
+        dense_3 = np.zeros((n, n))
+        for i in range(1, n+1):
+            sum_4 = 0
+            for j in range(1, n+1):
+                sum_4 += self.A.tocsr()[i-1, j-1]
+            dense_3[i-1, i-1] = sum_4
+        self.D = sparse.csr_matrix(dense_3)
         # L = D⁻¹ ( D - A )
-        self.L = sparse.linalg.spsolve(self.D, (self.D - self.A))
+        self.L = sparse.linalg.spsolve(self.D, self.D - self.A)
         # `V'` = (L + w diag(B))⁻¹ (w diag(B) V)
-        self.V_apostrophe = np.linalg.solve((self.L + self.w * np.diag(B)), (self.w * np.diag(B) @ V))
+        self.V_apostrophe = np.linalg.solve(self.L + self.w * np.diag(B), (self.w * np.diag(B)) @ V)
 

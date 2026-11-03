@@ -14,11 +14,15 @@ class Generic:
         assert np.ndim(y) == 0
         assert np.ndim(u) == 0
         assert np.ndim(v) == 0
+        self.J = J
+        self.x = x
+        self.y = y
+        self.u = u
+        self.v = v
         # `$x_p$` = (-y, x)
-        self.x_p = np.hstack((-y, x))
+        self.x_p = np.hstack((-y, x,))
         # `$v_p$` = (-v, u)
-        self.v_p = np.hstack((-v, u))
+        self.v_p = np.hstack((-v, u,))
         # M=[-J`$x_p$`+`$v_p$`  J  `$x_p$`  I_2]
-        M_0 = np.hstack(((-J @ self.x_p + self.v_p).reshape(2, 1), J, (self.x_p).reshape(2, 1), np.identity(2)))
-        self.M = M_0
+        self.M = np.block([[(-J @ self.x_p + self.v_p).reshape(-1, 1), J, (self.x_p).reshape(-1, 1), np.identity(2)]]).astype(np.float64)
 

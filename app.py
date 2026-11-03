@@ -39,6 +39,8 @@ cached_figure_code = {}
 # In Pyodide (the browser), there are no subprocesses or threads
 IN_BROWSER = sys.platform == 'emscripten'
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
+# The I❤️MESH runtime (triangle_mesh.py), which lib.py imports for a paper with meshes
+MESH_RUNTIME_DIR = os.path.join(os.path.dirname(os.path.abspath(sys.modules['iheartla'].__file__)), 'mesh', 'Python')
 
 
 def run_figure_script(source, cwd):
@@ -47,7 +49,8 @@ def run_figure_script(source, cwd):
     :return: (succeeded, error message)
     """
     if not IN_BROWSER:
-        ret = subprocess.run([sys.executable, source], cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        env = dict(os.environ, PYTHONPATH=os.pathsep.join(filter(None, [MESH_RUNTIME_DIR, os.environ.get('PYTHONPATH')])))
+        ret = subprocess.run([sys.executable, source], cwd=cwd, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         return ret.returncode == 0, ret.stderr.decode('UTF-8')
     # Run it in this interpreter, as a fresh __main__ that imports the current lib.py
     import runpy
@@ -55,6 +58,7 @@ def run_figure_script(source, cwd):
     old_cwd = os.getcwd()
     os.chdir(cwd)
     sys.path.insert(0, cwd)
+    sys.path.append(MESH_RUNTIME_DIR)
     sys.modules.pop('lib', None)
     try:
         runpy.run_path(source, run_name='__main__')
@@ -69,6 +73,7 @@ def run_figure_script(source, cwd):
         if 'matplotlib.pyplot' in sys.modules:
             sys.modules['matplotlib.pyplot'].close('all')
         sys.path.remove(cwd)
+        sys.path.remove(MESH_RUNTIME_DIR)
         os.chdir(old_cwd)
 
 def paper_requirements(content):

@@ -78,6 +78,10 @@
         {
           "title": "Heat diffusion on a surface with libigl",
           "paper": "heat/heat.md"
+        },
+        {
+          "title": "Gaussian curvature of a mesh with I❤️MESH",
+          "paper": "curvature/curvature.md"
         }
       ]
     },

@@ -147,6 +147,18 @@ def test_import_from_pypi(page):
     compile_source(page, paper_with_figure("", IGL_FIGURE.format(version="2.6.4.dev3")))
 
 
+def test_import_sympy(page):
+    # The editor doesn't load SymPy or TatSu, which compiling no longer needs; a figure that imports SymPy loads it
+    # (from Pyodide's CDN) on first use
+    compile_source(page, paper_with_figure("", """import sys
+assert "tatsu" not in sys.modules and "appdirs" not in sys.modules, [m for m in ("tatsu", "appdirs") if m in sys.modules]
+import sympy
+import matplotlib.pyplot as plt
+assert sympy.integrate(sympy.Symbol("x"), (sympy.Symbol("x"), 0, 2)) == 2
+plt.plot([0, 1])
+plt.savefig("cotangent.png")"""))
+
+
 def test_front_matter_requirements(page):
     compile_source(page, paper_with_figure("requirements:\n  - libigl==2.6.4.dev3",
                                            IGL_FIGURE.format(version="2.6.4.dev3")))

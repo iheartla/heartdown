@@ -80,7 +80,7 @@ js/heartdown-worker.js      (disk or IndexedDB)         │ GET paper/<session>/
 
 ### Vendored files
 
-- **`docs/js/pyodide/`** (44 MB, from `docs/update_pyodide.sh`): the Pyodide runtime, the packages compiling needs (regex, sympy, pyyaml, TatSu, appdirs, pybtex), and NumPy, SciPy and Matplotlib.
+- **`docs/js/pyodide/`** (40 MB, from `docs/update_pyodide.sh`): the Pyodide runtime, the packages compiling needs (regex, pyyaml, pybtex), and NumPy, SciPy and Matplotlib. SymPy, TatSu and appdirs aren't vendored or loaded: only the Python I❤️LA compiler needs them. A figure that imports SymPy loads it from the CDN, like any other Pyodide package.
   - The generated `lib.py` imports NumPy and SciPy. These and Matplotlib load the first time a paper has figure code.
   - `pyodide-lock.json` lists every other Pyodide package with its CDN URL. A figure that imports one of them (e.g. scikit-image) loads it from the CDN on first use. A figure that imports a package Pyodide doesn't have (e.g. plotly) installs it from PyPI with micropip, which works for pure-Python packages and those with a WebAssembly wheel for Pyodide's ABI (e.g. libigl). `PYPI_REQUIREMENTS` in `heartdown-worker.js` maps an import name to the requirement micropip installs, for a package whose PyPI name is different (`igl` → libigl). `OPTIONAL_PACKAGES` in `heartdown-worker.js` adds the packages a module needs without requiring them (pandas for `plotly.express`). After NumPy, SciPy and Matplotlib and before the figures' other imports, the worker installs the PyPI requirements that the paper's front matter lists under `requirements:` (read by `app.paper_requirements`), and reports a requirement that fails to install as a compile error. A figure run alone gets the paper's source too, for its front matter.
 - **`docs/heartdown-py.zip`** (from `docs/update_python.sh`): the Python code. Rebuild it after changing `app.py` or a submodule.
@@ -91,14 +91,14 @@ js/heartdown-worker.js      (disk or IndexedDB)         │ GET paper/<session>/
 - Pyodide keeps one implementation for the command line and the editor, and the editor's output matches the command line's exactly.
 - Figures are Python code, so Pyodide is needed in any case.
 - A JavaScript port would mean rewriting about 1,500 lines of H❤️rtDown's extensions and replacing Python-Markdown's behavior with a different Markdown parser's.
-- The cost is a 3 s start-up (cached after the first visit) and the 44 MB of vendored files.
+- The cost is a start-up of about 1.3 s from a local server (2.7 s while it loaded SymPy and TatSu for the Python compiler) and the 40 MB of vendored files.
 
 **Use the Rust I❤️LA compiler, as WebAssembly.**
 - The iheartla repository's `rust` branch has a Rust rewrite of the compiler, which is much faster, especially for I❤️MESH imports (see its `rust/README.md` and `notes/Performance.md`). The corpus tests take 8 s with it, 26 s with the Python compiler.
 - H❤️rtDown needs more than code from a compile: what `compile_la_content(..., get_json=True)` returns. That is the code of each output in parts (imports apart from each context's class), each equation's MathJax and MacroMathJax by its source text, and the equation data: parameters, definitions, optimization variables, local functions and imports, with their types and descriptions, and the symbols each definition relates (for the symbol colors).
 - So the Rust compiler exports that too: `rust/src/heartdown.rs`, `ih_heartdown_json` in the WebAssembly module (`iheartla heartdown` on the command line). `iheartla/rust_heartdown.py` turns it into the objects the Python compiler returns (`CodeFrame`s, `EquationData`), and `iheartla_code` imports its `compile_la_content`.
 - One WebAssembly module runs everywhere: with wasmtime on the command line, and with the browser's WebAssembly in Pyodide (`iheartla/rust_wasm.py`). The command line needs no Rust toolchain. The module is `iheartla/rust/iheartla.wasm` (2.9 MB), built by the submodule's `docs/update_rust_wasm.sh`.
-- H❤️rtDown no longer imports the Python compiler. It still imports `la_helper`, which imports TatSu and SymPy, so the editor still loads them.
+- H❤️rtDown no longer imports the Python compiler, nor TatSu, SymPy or appdirs: `la_helper`, whose helpers it uses, imports SymPy and TatSu only in the functions of the Python compiler that need them. So the editor doesn't load them, which halves its start-up.
 - On the test corpus, the pages are the same as with the Python compiler but for two details of the glossary's type data. A sequence without a declared length has the length's name in the generated code (`y_n`) where Python had `dim_0`; the page doesn't show it. And `w = 10^6` is an integer (Python: real).
 - The equation data leaves out the Python compiler's internal names (temporaries such as `P_0`, summation scopes such as `sum_0`), which H❤️rtDown used to label in the prose's math like the paper's symbols.
 - The generated code is the Rust compiler's: NumPy and C++ classes with the same interface (an attribute per definition and optimization variable, a method per local function).

@@ -28,3 +28,9 @@ without the images, PDFs and generated files.
 It needs Google Chrome and a network connection and takes a few minutes, so it runs only with `--browser`:
 
     uv run --group browser pytest --browser tests/test_browser.py
+
+## The two compilers
+
+`test_compilers.py` compiles each paper in `corpus/` and each of the editor's demos (`docs/examples/`) with the Rust and the Python I❤️LA compilers, and checks that the pages are the same: their HTML, and the data they give the page's scripts, apart from the names of sequences' sizes, which pages don't use. The generated code may differ. Papers that still differ, and why, are in `KNOWN_DIFFERENCES`. It takes about a minute, so it runs only with `--compilers`:
+
+    uv run pytest --compilers tests/test_compilers.py

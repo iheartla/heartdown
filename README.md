@@ -85,6 +85,8 @@ The paper can be a `.md` or `.txt` file, and `--paper` takes several. To share o
 
 writes `gallery_res/Judder/judder.html`, which loads `gallery_res/heartdown-resource/`. Figure code runs with this environment's Python, so add any packages it needs with `uv add`.
 
+H❤️rtDown compiles I❤️LA with the Rust I❤️LA compiler. `--compiler python` (or the environment variable `HEARTDOWN_COMPILER=python`) uses the Python compiler instead.
+
 Without a clone, uv can install H❤️rtDown and its submodules from GitHub and run it:
 
     uvx --from git+https://github.com/iheartla/heartdown heartdown --paper path/to/paper.md

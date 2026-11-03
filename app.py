@@ -529,6 +529,8 @@ def main():
     arg_parser.add_argument('-o', '--output', help='The output language', choices=['numpy', 'eigen', 'latex','matlab'])
     arg_parser.add_argument('--paper', nargs='*', help='paper text')
     arg_parser.add_argument('-q', '--quiet', action='store_true', help='Hide warnings (such as undescribed symbols)')
+    arg_parser.add_argument('--compiler', choices=['rust', 'python'],
+                            help='The I❤️LA compiler (default: the HEARTDOWN_COMPILER environment variable, or rust)')
     # iheartla makes `import re` return `regex`, which breaks argparse's usage and error formatting
     iheartla_re = sys.modules['re']
     sys.modules['re'] = STDLIB_RE
@@ -536,6 +538,8 @@ def main():
         args = arg_parser.parse_args()
     finally:
         sys.modules['re'] = iheartla_re
+    if args.compiler:
+        os.environ['HEARTDOWN_COMPILER'] = args.compiler
     # LaLogger.getInstance().set_level(logging.DEBUG if DEBUG_MODE else logging.ERROR)
     LaLogger.getInstance().set_level(logging.ERROR if args.quiet else logging.WARNING)
     failed = []

@@ -38,7 +38,6 @@ struct Regularized {
     double b;
     double ε;
 
-    Regularized() {}
     Regularized(const double & r, const Eigen::Matrix<double, 3, 1> & boldsymbolf, const double & s, const Eigen::Matrix<double, 3, 3> & boldsymbolF, const double & r_ε, const double & a, const double & b, const double & ε)
     {
         this->r = r;
@@ -58,7 +57,7 @@ struct Regularized {
 
     double rho_ε(const Eigen::Matrix<double, 3, 1> & boldsymbolr)
     {
-        return (15 * pow(this->r_ε, 4)) / (8 * M_PI) + 1 / pow(this->r_ε, 7);
+        return ((15 * pow(this->r_ε, 4)) / (8 * M_PI) + 1 / pow(this->r_ε, 7));
     }
 
     Eigen::Matrix<double, 3, 1> boldsymbolu_ε(const Eigen::Matrix<double, 3, 1> & boldsymbolr)

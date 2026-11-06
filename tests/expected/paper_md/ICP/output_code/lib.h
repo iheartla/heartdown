@@ -57,7 +57,6 @@ struct ICP {
     Eigen::Matrix<double, 4, 4> S;
     double varepsilon_twoplane;
 
-    ICP() {}
     ICP(const Eigen::Matrix<double, 3, 3> & R, const Eigen::Matrix<double, 3, 1> & a, const double & θ, const std::vector<Eigen::Matrix<double, 3, 1>> & p, const std::vector<Eigen::Matrix<double, 3, 1>> & q, const std::vector<Eigen::Matrix<double, 3, 1>> & n_q, const std::vector<Eigen::Matrix<double, 3, 1>> & n_p, const Eigen::Matrix<double, 3, 1> & t, const Eigen::Matrix<double, 3, 1> & barq, const Eigen::Matrix<double, 3, 1> & barp, const std::function<Eigen::Matrix<double, 4, 4>(Eigen::Matrix<double, 3, 1>)> & trans, const std::function<Eigen::Matrix<double, 4, 4>(double, Eigen::Matrix<double, 3, 1>)> & rot)
     {
         this->R = R;
@@ -98,15 +97,15 @@ struct ICP {
         // `$\varepsilon_{point}$` = ∑_i ||R p_i + t - q_i||
         this->varepsilon_point = [&](){ double sum = 0.0; for(int i = 1; i <= this->p_n; i++){ sum += (this->R * this->p.at(i-1) + this->t - this->q.at(i-1)).norm(); } return sum; }();
         // `$\varepsilon_{plane}$` = ∑_i ((R p_i + t - q_i) ⋅ `$n_q$`_i)^2
-        this->varepsilon_plane = [&](){ double sum = 0.0; for(int i = 1; i <= this->p_n; i++){ sum += pow(((this->R * this->p.at(i-1) + this->t - this->q.at(i-1)).eval()).dot((this->n_q.at(i-1)).eval()), 2); } return sum; }();
+        this->varepsilon_plane = [&](){ double sum = 0.0; for(int i = 1; i <= this->p_n; i++){ sum += pow(((((this->R * this->p.at(i-1) + this->t - this->q.at(i-1))).eval()).dot((this->n_q.at(i-1)).eval())), 2); } return sum; }();
         // `$\varepsilon_{symm-RN}$` = ∑_i ((R p_i + R⁻¹ q_i + t) ⋅ (R`$n_p$`_i + R⁻¹`$n_q$`_i))^2
-        this->varepsilon_symmRN = [&](){ double sum = 0.0; for(int i = 1; i <= this->p_n; i++){ sum += pow(((this->R * this->p.at(i-1) + ((this->R).eval()).colPivHouseholderQr().solve((this->q.at(i-1)).eval()) + this->t).eval()).dot((this->R * this->n_p.at(i-1) + ((this->R).eval()).colPivHouseholderQr().solve((this->n_q.at(i-1)).eval())).eval()), 2); } return sum; }();
+        this->varepsilon_symmRN = [&](){ double sum = 0.0; for(int i = 1; i <= this->p_n; i++){ sum += pow(((((this->R * this->p.at(i-1) + ((this->R).eval()).colPivHouseholderQr().solve((this->q.at(i-1)).eval()) + this->t)).eval()).dot(((this->R * this->n_p.at(i-1) + ((this->R).eval()).colPivHouseholderQr().solve((this->n_q.at(i-1)).eval()))).eval())), 2); } return sum; }();
         // `$\varepsilon_{symm}$` = ∑_i cos²(θ)((p_i - q_i)⋅n_i +((p_i+q_i)×n_i)⋅ã+n_i⋅t̃)²
-        this->varepsilon_symm = [&](){ double sum = 0.0; for(int i = 1; i <= this->p_n; i++){ sum += pow(cos(this->θ), 2) * pow(((this->p.at(i-1) - this->q.at(i-1)).eval()).dot((this->n.at(i-1)).eval()) + ((((this->p.at(i-1) + this->q.at(i-1)).eval()).cross((this->n.at(i-1)).eval())).eval()).dot((this->ã).eval()) + ((this->n.at(i-1)).eval()).dot((this->t̃).eval()), 2); } return sum; }();
+        this->varepsilon_symm = [&](){ double sum = 0.0; for(int i = 1; i <= this->p_n; i++){ sum += pow(cos(this->θ), 2) * pow(((((this->p.at(i-1) - this->q.at(i-1))).eval()).dot((this->n.at(i-1)).eval()) + ((((((this->p.at(i-1) + this->q.at(i-1))).eval()).cross((this->n.at(i-1)).eval()))).eval()).dot((this->ã).eval()) + ((this->n.at(i-1)).eval()).dot((this->t̃).eval())), 2); } return sum; }();
         // S = trans(`$\bar{q}$`) ⋅ rot(θ, ã/||ã||) ⋅trans(t̃ cos(θ)) ⋅rot(θ, ã/||ã||)⋅ trans(-`$\bar{p}$`)
         this->S = (((this->trans(this->barq) * this->rot(this->θ, this->ã / (this->ã).norm())) * this->trans(this->t̃ * cos(this->θ))) * this->rot(this->θ, this->ã / (this->ã).norm())) * this->trans(-this->barp);
         // `$\varepsilon_{two-plane}$` = ∑_i(((R p_i + R⁻¹ q_i + t) ⋅ (R `$n_p$`_i))^2 + ((R p_i + R⁻¹ q_i + t) ⋅ (R⁻¹`$n_q$`_i))^2)
-        this->varepsilon_twoplane = [&](){ double sum = 0.0; for(int i = 1; i <= this->p_n; i++){ sum += pow(((this->R * this->p.at(i-1) + ((this->R).eval()).colPivHouseholderQr().solve((this->q.at(i-1)).eval()) + this->t).eval()).dot((this->R * this->n_p.at(i-1)).eval()), 2) + pow(((this->R * this->p.at(i-1) + ((this->R).eval()).colPivHouseholderQr().solve((this->q.at(i-1)).eval()) + this->t).eval()).dot((((this->R).eval()).colPivHouseholderQr().solve((this->n_q.at(i-1)).eval())).eval()), 2); } return sum; }();
+        this->varepsilon_twoplane = [&](){ double sum = 0.0; for(int i = 1; i <= this->p_n; i++){ sum += (pow(((((this->R * this->p.at(i-1) + ((this->R).eval()).colPivHouseholderQr().solve((this->q.at(i-1)).eval()) + this->t)).eval()).dot(((this->R * this->n_p.at(i-1))).eval())), 2) + pow(((((this->R * this->p.at(i-1) + ((this->R).eval()).colPivHouseholderQr().solve((this->q.at(i-1)).eval()) + this->t)).eval()).dot(((((this->R).eval()).colPivHouseholderQr().solve((this->n_q.at(i-1)).eval()))).eval())), 2)); } return sum; }();
     }
 };
 

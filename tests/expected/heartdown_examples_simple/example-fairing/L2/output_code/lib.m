@@ -28,31 +28,45 @@ function output = fairing(E, n, B, V)
     % A_ij = { 1 if (i,j) ∈ E
     %          1 if (j,i) ∈ E
     %          0 otherwise
-    dense_1 = zeros(n, n);
+    rows_1 = zeros(0, 1);
+    cols_2 = zeros(0, 1);
+    vals_3 = zeros(0, 1);
     for i_ = 1:n
         for j_ = 1:n
-            ret_2 = 0;
+            ret_4 = 0;
             if ismember([i_, j_], E, 'rows')
-                ret_2 = 1;
+                ret_4 = 1;
             elseif ismember([j_, i_], E, 'rows')
-                ret_2 = 1;
+                ret_4 = 1;
             else
-                ret_2 = 0;
+                ret_4 = 0;
             end
-            dense_1(i_, j_) = ret_2;
+            value_5 = ret_4;
+            if value_5 ~= 0
+                rows_1(end+1, 1) = i_;
+                cols_2(end+1, 1) = j_;
+                vals_3(end+1, 1) = value_5;
+            end
         end
     end
-    A = sparse(dense_1);
+    A = sparse(rows_1, cols_2, vals_3, n, n);
     % D_ii = ∑_j A_ij
-    dense_3 = zeros(n, n);
+    rows_6 = zeros(0, 1);
+    cols_7 = zeros(0, 1);
+    vals_8 = zeros(0, 1);
     for i_ = 1:n
-        sum_4 = 0;
+        sum_9 = 0;
         for j_ = 1:n
-            sum_4 = sum_4 + A(i_, j_);
+            sum_9 = sum_9 + A(i_, j_);
         end
-        dense_3(i_, i_) = sum_4;
+        value_10 = sum_9;
+        if value_10 ~= 0
+            rows_6(end+1, 1) = i_;
+            cols_7(end+1, 1) = i_;
+            vals_8(end+1, 1) = value_10;
+        end
     end
-    D = sparse(dense_3);
+    D = sparse(rows_6, cols_7, vals_8, n, n);
     % L = D⁻¹ ( D - A )
     L = D \ (D - A);
     % `V'` = (L² + w diag(B))⁻¹ (w diag(B) V)

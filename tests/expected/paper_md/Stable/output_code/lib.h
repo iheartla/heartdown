@@ -41,7 +41,6 @@ struct Stable {
     Eigen::Matrix<double, 3, 3> fracpartialJpartialF;
     Eigen::Matrix<double, 3, 3> PF;
 
-    Stable() {}
     Stable(const Eigen::Matrix<double, 3, 3> & F, const double & μ, const double & I_C, const double & λ, const Eigen::Matrix<double, 3, 1> & f_0, const Eigen::Matrix<double, 3, 1> & f_1, const Eigen::Matrix<double, 3, 1> & f_2)
     {
         this->F = F;
@@ -54,7 +53,7 @@ struct Stable {
         // α = 1 + μ/λ - μ/(4λ)
         this->α = 1 + this->μ / this->λ - this->μ / (4 * this->λ);
         // J =`$f_0$`⋅(`$f_1$`×`$f_2$`)
-        this->J = ((this->f_0).eval()).dot((((this->f_1).eval()).cross((this->f_2).eval())).eval());
+        this->J = ((this->f_0).eval()).dot(((((this->f_1).eval()).cross((this->f_2).eval()))).eval());
         // `$\frac{\partial J}{\partial F}$` = [`$f_1$`×`$f_2$` `$f_2$`×`$f_0$` `$f_0$`×`$f_1$`]
         this->fracpartialJpartialF = [&](){ Eigen::MatrixXd m(3, 3); m << ((this->f_1).eval()).cross((this->f_2).eval()), ((this->f_2).eval()).cross((this->f_0).eval()), ((this->f_0).eval()).cross((this->f_1).eval()); return m; }();
         // `$P(F)$` = μ(1-1/(`$I_C$`+1))F + λ(J- α)`$\frac{\partial J}{\partial F}$`

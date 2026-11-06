@@ -53,11 +53,11 @@ class pipeline:
         # B = Z⋅`$f_x$` + X⋅(x -`$c_x$` )
         self.B = Z * f_x + X * (x - c_x)
         # D = √(A^2 +B^2)
-        self.D = np.sqrt(self.A**2 + self.B**2)
+        self.D = np.sqrt((np.power(self.A, 2) + np.power(self.B, 2)))
         # γ = arctan(B/A)
         self.γ = np.arctan(self.B / self.A)
         # C = -r⋅(x -`$c_x$` )
-        self.C = -r * (x - c_x)
+        self.C = -(r * (x - c_x))
         # ϕ = arcsin(C/D)
         self.ϕ = np.arcsin(self.C / self.D)
         # `$α_1$` = ϕ - γ

@@ -37,7 +37,6 @@ struct soft {
     long α_n;
     double F_S;
 
-    soft() {}
     soft(const std::function<double(int, Eigen::Matrix<double, 3, 1>)> & D, const std::vector<Eigen::Matrix<double, 3, 1>> & boldsymbolu, const double & σ, const std::vector<double> & α)
     {
         this->D = D;

@@ -38,7 +38,6 @@ struct nautilus {
     Eigen::Matrix<double, 3, 3> S;
     Eigen::Matrix<double, 3, 3> H;
 
-    nautilus() {}
     nautilus(const Eigen::VectorXd & x, const double & λ, const std::vector<Eigen::Matrix<double, 3, 3>> & v)
     {
         this->x = x;

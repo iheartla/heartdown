@@ -36,7 +36,6 @@ struct eccentricity {
     int 𝑙_0;
     Eigen::Matrix<double, 3, 1> q;
 
-    eccentricity() {}
     eccentricity(const std::function<double(double, double)> & m, const Eigen::Matrix<double, 10, 1> & 𝑝, const double & 𝑓_𝑠0, const double & a)
     {
         this->m = m;
@@ -46,7 +45,7 @@ struct eccentricity {
         // `$𝑙_0$` = 1488
         this->𝑙_0 = 1488;
         // q = (5.71 ⋅ 10^(-6), -1.78 ⋅ 10^(-4), 0.204)
-        this->q = [&](){ Eigen::Matrix<double, 3, 1> v(3); v << 5.71 * pow(10, -6), -(1.78 * pow(10, -4)), 0.204; return v; }();
+        this->q = [&](){ Eigen::Matrix<double, 3, 1> v(3); v << 5.71 * pow(10, (-6)), -(1.78 * pow(10, (-4))), 0.204; return v; }();
     }
 
     double 𝑔(const Eigen::Matrix<double, 2, 1> & x, const Eigen::Matrix<double, 2, 1> & x_0, const double & 𝜃, const double & 𝜎, const double & 𝑓_𝑠)
@@ -76,7 +75,7 @@ struct eccentricity {
 
     double 𝑑(const double & 𝐿)
     {
-        return 7.75 - 5.75 * (pow((𝐿 * this->a) / 846, 0.41) / (pow((𝐿 * this->a) / 846, 0.41) + 2));
+        return 7.75 - 5.75 * (pow(((𝐿 * this->a) / 846), 0.41) / (pow(((𝐿 * this->a) / 846), 0.41) + 2));
     }
 
     double 𝑙(const double & 𝐿)

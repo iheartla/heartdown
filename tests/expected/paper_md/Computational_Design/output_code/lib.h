@@ -43,7 +43,6 @@ struct computation {
     double E_f;
     double E;
 
-    computation() {}
     computation(const double & λ_s, const double & E_a, const std::function<double(double, double)> & D, const double & S_1, const double & S_2, const double & U_1, const double & U_2, const std::vector<Eigen::Matrix<double, 3, 1>> & R)
     {
         this->λ_s = λ_s;

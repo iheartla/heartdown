@@ -113,7 +113,7 @@ function output = notchlimit(delta_minus_sign, delta_plus_sign, beta_q, beta_min
     assert( numel(beta_plus_sign) == 1 );
     
     % `E_n` = `$δ^{(−)}$`(1/10 log((`$β_q$`-`$β^{(−)}$`)))^2 + `$δ^{(+)}$`(1/10 log((`$β^{(+)}$`-`$β_q$`)))^2
-    E_n = delta_minus_sign * (((1 / 10) * log(beta_q - beta_minus_sign)).^2) + delta_plus_sign * (((1 / 10) * log(beta_plus_sign - beta_q)).^2);
+    E_n = delta_minus_sign * (((1 / 10) * log((beta_q - beta_minus_sign))).^2) + delta_plus_sign * (((1 / 10) * log((beta_plus_sign - beta_q))).^2);
     output.E_n = E_n;
 end
 
@@ -130,7 +130,7 @@ function output = penalty(mu, epsilon, beta_q)
     assert( numel(beta_q) == 1 );
     
     % `E_p` = (μ log((ε + `$β_q$`)))^2 + (μ log((ε + 1 - `$β_q$`)))^2
-    E_p = (mu * log(epsilon + beta_q)).^2 + (mu * log(epsilon + 1 - beta_q)).^2;
+    E_p = (mu * log((epsilon + beta_q))).^2 + (mu * log((epsilon + 1 - beta_q))).^2;
     output.E_p = E_p;
 end
 

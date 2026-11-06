@@ -41,7 +41,6 @@ struct Anisotropic {
     Eigen::Matrix<double, 3, 3> mathbfQ_1;
     Eigen::Matrix<double, 3, 3> mathbfQ_2;
 
-    Anisotropic() {}
     Anisotropic(const Eigen::Matrix<double, 3, 1> & a, const Eigen::Matrix<double, 3, 3> & C, const Eigen::Matrix<double, 3, 3> & F)
     {
         this->a = a;
@@ -83,7 +82,6 @@ struct Anisotropic2D {
     Eigen::Matrix<double, 2, 2> mathbfQ_0;
     Eigen::Matrix<double, 2, 2> mathbfQ_1;
 
-    Anisotropic2D() {}
     Anisotropic2D(const Eigen::Matrix<double, 2, 1> & a, const Eigen::Matrix<double, 2, 2> & A)
     {
         this->a = a;

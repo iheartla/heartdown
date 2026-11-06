@@ -51,7 +51,7 @@ function output = Regularized(r, boldsymbolf, s, boldsymbolF, r_epsilon, a, b, e
     end
     function ret = rho_epsilon(boldsymbolr)
         boldsymbolr = reshape(boldsymbolr, [], 1);
-        ret = (15 * (r_epsilon.^4)) / (8 * pi) + 1 / (r_epsilon.^7);
+        ret = ((15 * (r_epsilon.^4)) / (8 * pi) + 1 / (r_epsilon.^7));
     end
     function ret = boldsymbolu_epsilon(boldsymbolr)
         boldsymbolr = reshape(boldsymbolr, [], 1);

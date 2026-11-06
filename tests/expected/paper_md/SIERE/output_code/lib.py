@@ -52,19 +52,19 @@ class siere:
         self.Hu = np.block([[(self.v_H).reshape(-1, 1)], [(np.linalg.solve(M, self.f_H)).reshape(-1, 1)]]).astype(np.float64)
         # `$J_G$` = [0    `$U_s$``$U_s$`^TM
         #       -`$U_s$``$U_s$`^TK`$U_s$``$U_s$`^TM 0 ]
-        self.J_G = np.block([[np.zeros((n, n)), (U_s @ U_s.T) @ M], [-((((U_s @ U_s.T) @ K) @ U_s) @ U_s.T) @ M, np.zeros((n, n))]]).astype(np.float64)
+        self.J_G = np.block([[np.zeros((n, n)), (U_s @ U_s.T) @ M], [-(((((U_s @ U_s.T) @ K) @ U_s) @ U_s.T) @ M), np.zeros((n, n))]]).astype(np.float64)
         # `$J_H$` =  [0     I_n
         #             -M⁻¹K 0] - `$J_G$`
         self.J_H = np.block([[np.zeros((n, n)), np.identity(n)], [-np.linalg.solve(M, K), np.zeros((n, n))]]).astype(np.float64) - self.J_G
         # `$J_G^r$` = [0     I_s
         #             -`$U_s$`^TK`$U_s$` 0]
-        self.J_G_circumflex_accent_r = np.block([[np.zeros((s, s)), np.identity(s)], [-(U_s.T @ K) @ U_s, np.zeros((s, s))]]).astype(np.float64)
+        self.J_G_circumflex_accent_r = np.block([[np.zeros((s, s)), np.identity(s)], [-((U_s.T @ K) @ U_s), np.zeros((s, s))]]).astype(np.float64)
         # `$G^r(u)$` = [`$U_s$`^TMv
         #             `$U_s$`^Tf]
         self.G_circumflex_accent_ru = np.block([[((U_s.T @ M) @ v).reshape(-1, 1)], [(U_s.T @ f).reshape(-1, 1)]]).astype(np.float64)
         # `$u_+$` =  u + (`$\boldsymbol{I}$` -h`$J_H$`)⁻¹(h `$H(u)$` + h[`$U_s$` 0
         #                                                0   `$U_s$`] `$φ_1$`(h`$J_G^r$`) `$G^r(u)$`)
-        self.u_plus_sign = u + np.linalg.solve(boldsymbolI - (h * self.J_H), h * self.Hu + ((h * np.block([[U_s, np.zeros((n, s))], [np.zeros((n, s)), U_s]]).astype(np.float64)) @ φ_1(h * self.J_G_circumflex_accent_r)) @ self.G_circumflex_accent_ru)
+        self.u_plus_sign = u + np.linalg.solve((boldsymbolI - (h * self.J_H)), (h * self.Hu + ((h * np.block([[U_s, np.zeros((n, s))], [np.zeros((n, s)), U_s]]).astype(np.float64)) @ φ_1(h * self.J_G_circumflex_accent_r)) @ self.G_circumflex_accent_ru))
 
 class second:
     def __init__(self, U_s, M, K):
@@ -89,7 +89,7 @@ class second:
         self.Z_1 = np.block([[np.zeros((1, s))], [M @ U_s]]).astype(np.float64)
         # `$Y_2$` =  [0
         #             -`$U_s$``$U_s$`^TK`$U_s$`]
-        self.Y_2 = np.block([[np.zeros((1, s))], [-((U_s @ U_s.T) @ K) @ U_s]]).astype(np.float64)
+        self.Y_2 = np.block([[np.zeros((1, s))], [-(((U_s @ U_s.T) @ K) @ U_s)]]).astype(np.float64)
         # `$Z_2$` =  [ M`$U_s$`
         #              0]
         self.Z_2 = np.block([[M @ U_s], [np.zeros((1, s))]]).astype(np.float64)

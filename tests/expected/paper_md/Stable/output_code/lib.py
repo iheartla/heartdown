@@ -29,7 +29,7 @@ class Stable:
         # α = 1 + μ/λ - μ/(4λ)
         self.α = 1 + μ / λ - (μ / (4 * λ))
         # J =`$f_0$`⋅(`$f_1$`×`$f_2$`)
-        self.J = np.dot((f_0).ravel(), (np.cross(f_1, f_2)).ravel())
+        self.J = np.dot((f_0).ravel(), ((np.cross(f_1, f_2))).ravel())
         # `$\frac{\partial J}{\partial F}$` = [`$f_1$`×`$f_2$` `$f_2$`×`$f_0$` `$f_0$`×`$f_1$`]
         self.fracpartialJpartialF = np.block([[(np.cross(f_1, f_2)).reshape(-1, 1), (np.cross(f_2, f_0)).reshape(-1, 1), (np.cross(f_0, f_1)).reshape(-1, 1)]]).astype(np.float64)
         # `$P(F)$` = μ(1-1/(`$I_C$`+1))F + λ(J- α)`$\frac{\partial J}{\partial F}$`

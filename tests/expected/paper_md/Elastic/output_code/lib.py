@@ -96,7 +96,7 @@ class elastic:
             self.t = t
             self.n = n
             # `E_q` = `$λ_{q,1}$`||`$q_g$`-`$q_h$`+t`$m_g$`||^2 + `$λ_{q,1}$`||`$q_h$`-`$q_g$`+t`$m_h$`||^2 + `$λ_{q,2}$`||`$\angle$`(`$m_g$`,`$m_h$`)||^2
-            self.E_q = λ_q_comma_1 * (np.linalg.norm(q_g - q_h + t * m_g, 2)**2) + λ_q_comma_1 * (np.linalg.norm(q_h - q_g + t * m_h, 2)**2) + λ_q_comma_2 * (np.linalg.norm(angle(m_g, m_h), 2)**2)
+            self.E_q = λ_q_comma_1 * (np.power(np.linalg.norm(q_g - q_h + t * m_g, 2), 2)) + λ_q_comma_1 * (np.power(np.linalg.norm(q_h - q_g + t * m_h, 2), 2)) + λ_q_comma_2 * (np.power(np.linalg.norm(angle(m_g, m_h), 2), 2))
 
     class anchor:
         def __init__(self, λ_a_comma_1, λ_a_comma_2, q, q_a, m, m_a, angle):
@@ -120,7 +120,7 @@ class elastic:
             self.angle = angle
             self.n = n
             # `E_a` = `$λ_{a,1}$`||q-`$q_a$`||^2 + `$λ_{a,2}$`||`$\angle$`(m,`$m_a$`)||^2
-            self.E_a = λ_a_comma_1 * (np.linalg.norm(q - q_a, 2)**2) + λ_a_comma_2 * (np.linalg.norm(angle(m, m_a), 2)**2)
+            self.E_a = λ_a_comma_1 * (np.power(np.linalg.norm(q - q_a, 2), 2)) + λ_a_comma_2 * (np.power(np.linalg.norm(angle(m, m_a), 2), 2))
 
     class notchlimit:
         def __init__(self, δ_circumflex_accent_minus_sign, δ_circumflex_accent_plus_sign, β_q, β_circumflex_accent_minus_sign, β_circumflex_accent_plus_sign):
@@ -135,7 +135,7 @@ class elastic:
             self.β_circumflex_accent_minus_sign = β_circumflex_accent_minus_sign
             self.β_circumflex_accent_plus_sign = β_circumflex_accent_plus_sign
             # `E_n` = `$δ^{(−)}$`(1/10 log((`$β_q$`-`$β^{(−)}$`)))^2 + `$δ^{(+)}$`(1/10 log((`$β^{(+)}$`-`$β_q$`)))^2
-            self.E_n = δ_circumflex_accent_minus_sign * (((1 / 10) * np.log(β_q - β_circumflex_accent_minus_sign))**2) + δ_circumflex_accent_plus_sign * (((1 / 10) * np.log(β_circumflex_accent_plus_sign - β_q))**2)
+            self.E_n = δ_circumflex_accent_minus_sign * (np.power(((1 / 10) * np.log((β_q - β_circumflex_accent_minus_sign))), 2)) + δ_circumflex_accent_plus_sign * (np.power(((1 / 10) * np.log((β_circumflex_accent_plus_sign - β_q))), 2))
 
     class penalty:
         def __init__(self, μ, ε, β_q):
@@ -146,7 +146,7 @@ class elastic:
             self.ε = ε
             self.β_q = β_q
             # `E_p` = (μ log((ε + `$β_q$`)))^2 + (μ log((ε + 1 - `$β_q$`)))^2
-            self.E_p = (μ * np.log(ε + β_q))**2 + (μ * np.log(ε + 1 - β_q))**2
+            self.E_p = np.power((μ * np.log((ε + β_q))), 2) + np.power((μ * np.log((ε + 1 - β_q))), 2)
 
 class connection:
     def __init__(self, q_g, q_h, m_g, m_h, angle, λ_q_comma_1, λ_q_comma_2, t):
@@ -172,7 +172,7 @@ class connection:
         self.t = t
         self.n = n
         # `E_q` = `$λ_{q,1}$`||`$q_g$`-`$q_h$`+t`$m_g$`||^2 + `$λ_{q,1}$`||`$q_h$`-`$q_g$`+t`$m_h$`||^2 + `$λ_{q,2}$`||`$\angle$`(`$m_g$`,`$m_h$`)||^2
-        self.E_q = λ_q_comma_1 * (np.linalg.norm(q_g - q_h + t * m_g, 2)**2) + λ_q_comma_1 * (np.linalg.norm(q_h - q_g + t * m_h, 2)**2) + λ_q_comma_2 * (np.linalg.norm(angle(m_g, m_h), 2)**2)
+        self.E_q = λ_q_comma_1 * (np.power(np.linalg.norm(q_g - q_h + t * m_g, 2), 2)) + λ_q_comma_1 * (np.power(np.linalg.norm(q_h - q_g + t * m_h, 2), 2)) + λ_q_comma_2 * (np.power(np.linalg.norm(angle(m_g, m_h), 2), 2))
 
 class anchor:
     def __init__(self, λ_a_comma_1, λ_a_comma_2, q, q_a, m, m_a, angle):
@@ -196,7 +196,7 @@ class anchor:
         self.angle = angle
         self.n = n
         # `E_a` = `$λ_{a,1}$`||q-`$q_a$`||^2 + `$λ_{a,2}$`||`$\angle$`(m,`$m_a$`)||^2
-        self.E_a = λ_a_comma_1 * (np.linalg.norm(q - q_a, 2)**2) + λ_a_comma_2 * (np.linalg.norm(angle(m, m_a), 2)**2)
+        self.E_a = λ_a_comma_1 * (np.power(np.linalg.norm(q - q_a, 2), 2)) + λ_a_comma_2 * (np.power(np.linalg.norm(angle(m, m_a), 2), 2))
 
 class notchlimit:
     def __init__(self, δ_circumflex_accent_minus_sign, δ_circumflex_accent_plus_sign, β_q, β_circumflex_accent_minus_sign, β_circumflex_accent_plus_sign):
@@ -211,7 +211,7 @@ class notchlimit:
         self.β_circumflex_accent_minus_sign = β_circumflex_accent_minus_sign
         self.β_circumflex_accent_plus_sign = β_circumflex_accent_plus_sign
         # `E_n` = `$δ^{(−)}$`(1/10 log((`$β_q$`-`$β^{(−)}$`)))^2 + `$δ^{(+)}$`(1/10 log((`$β^{(+)}$`-`$β_q$`)))^2
-        self.E_n = δ_circumflex_accent_minus_sign * (((1 / 10) * np.log(β_q - β_circumflex_accent_minus_sign))**2) + δ_circumflex_accent_plus_sign * (((1 / 10) * np.log(β_circumflex_accent_plus_sign - β_q))**2)
+        self.E_n = δ_circumflex_accent_minus_sign * (np.power(((1 / 10) * np.log((β_q - β_circumflex_accent_minus_sign))), 2)) + δ_circumflex_accent_plus_sign * (np.power(((1 / 10) * np.log((β_circumflex_accent_plus_sign - β_q))), 2))
 
 class penalty:
     def __init__(self, μ, ε, β_q):
@@ -222,5 +222,5 @@ class penalty:
         self.ε = ε
         self.β_q = β_q
         # `E_p` = (μ log((ε + `$β_q$`)))^2 + (μ log((ε + 1 - `$β_q$`)))^2
-        self.E_p = (μ * np.log(ε + β_q))**2 + (μ * np.log(ε + 1 - β_q))**2
+        self.E_p = np.power((μ * np.log((ε + β_q))), 2) + np.power((μ * np.log((ε + 1 - β_q))), 2)
 

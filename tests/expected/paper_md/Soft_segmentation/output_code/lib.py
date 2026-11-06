@@ -28,6 +28,6 @@ class soft:
             sum_2 += α[i-1]
         sum_3 = 0
         for i in range(1, α_n+1):
-            sum_3 += α[i-1]**2
+            sum_3 += np.power(α[i-1], 2)
         self.F_S = sum_1 + σ * (sum_2 / sum_3 - 1)
 

@@ -70,5 +70,5 @@ class third:
         self.F_a = F_a
         self.L_a = L_a
         # `$L_b$` = 10^((a `$F_b$`log((`$L_a$`))+b(`$F_b$`-`$F_a$`))/(a`$F_a$`))
-        self.L_b = 10**(((a * F_b) * np.log(L_a) + b * (F_b - F_a)) / (a * F_a))
+        self.L_b = np.power(10, (((a * F_b) * np.log(L_a) + b * (F_b - F_a)) / (a * F_a)))
 

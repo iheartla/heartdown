@@ -78,19 +78,19 @@ function output = ICP(R, a, theta, p, q, n_q, n_p, t, barq, barp, trans, rot)
     % `$\varepsilon_{plane}$` = ∑_i ((R p_i + t - q_i) ⋅ `$n_q$`_i)^2
     sum_2 = 0;
     for i_ = 1:p_n
-        sum_2 = sum_2 + dot(R * p(i_, :).' + t - q(i_, :).', n_q(i_, :).').^2;
+        sum_2 = sum_2 + (dot((R * p(i_, :).' + t - q(i_, :).'), n_q(i_, :).')).^2;
     end
     varepsilon_plane = sum_2;
     % `$\varepsilon_{symm-RN}$` = ∑_i ((R p_i + R⁻¹ q_i + t) ⋅ (R`$n_p$`_i + R⁻¹`$n_q$`_i))^2
     sum_3 = 0;
     for i_ = 1:p_n
-        sum_3 = sum_3 + dot(R * p(i_, :).' + R \ q(i_, :).' + t, R * n_p(i_, :).' + R \ n_q(i_, :).').^2;
+        sum_3 = sum_3 + (dot((R * p(i_, :).' + R \ q(i_, :).' + t), (R * n_p(i_, :).' + R \ n_q(i_, :).'))).^2;
     end
     varepsilon_symmRN = sum_3;
     % `$\varepsilon_{symm}$` = ∑_i cos²(θ)((p_i - q_i)⋅n_i +((p_i+q_i)×n_i)⋅ã+n_i⋅t̃)²
     sum_4 = 0;
     for i_ = 1:p_n
-        sum_4 = sum_4 + (cos(theta).^2) * ((dot(p(i_, :).' - q(i_, :).', n(i_, :).') + dot(cross(p(i_, :).' + q(i_, :).', n(i_, :).'), a_tilde) + dot(n(i_, :).', t_tilde)).^2);
+        sum_4 = sum_4 + (cos(theta).^2) * ((dot((p(i_, :).' - q(i_, :).'), n(i_, :).') + dot((cross((p(i_, :).' + q(i_, :).'), n(i_, :).')), a_tilde) + dot(n(i_, :).', t_tilde)).^2);
     end
     varepsilon_symm = sum_4;
     % S = trans(`$\bar{q}$`) ⋅ rot(θ, ã/||ã||) ⋅trans(t̃ cos(θ)) ⋅rot(θ, ã/||ã||)⋅ trans(-`$\bar{p}$`)
@@ -98,7 +98,7 @@ function output = ICP(R, a, theta, p, q, n_q, n_p, t, barq, barp, trans, rot)
     % `$\varepsilon_{two-plane}$` = ∑_i(((R p_i + R⁻¹ q_i + t) ⋅ (R `$n_p$`_i))^2 + ((R p_i + R⁻¹ q_i + t) ⋅ (R⁻¹`$n_q$`_i))^2)
     sum_5 = 0;
     for i_ = 1:p_n
-        sum_5 = sum_5 + dot(R * p(i_, :).' + R \ q(i_, :).' + t, R * n_p(i_, :).').^2 + dot(R * p(i_, :).' + R \ q(i_, :).' + t, R \ n_q(i_, :).').^2;
+        sum_5 = sum_5 + ((dot((R * p(i_, :).' + R \ q(i_, :).' + t), (R * n_p(i_, :).'))).^2 + (dot((R * p(i_, :).' + R \ q(i_, :).' + t), (R \ n_q(i_, :).'))).^2);
     end
     varepsilon_twoplane = sum_5;
     output.a_tilde = a_tilde;

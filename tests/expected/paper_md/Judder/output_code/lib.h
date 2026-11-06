@@ -42,7 +42,6 @@ struct judder {
     double F_b;
     double J;
 
-    judder() {}
     judder(const double & F, const double & L, const double & S, const std::function<double(double, double, double)> & P, const double & a, const double & b, const double & M, const double & L_a, const double & L_b)
     {
         this->F = F;
@@ -85,7 +84,6 @@ struct error {
     long N;
     double E;
 
-    error() {}
     error(const Eigen::VectorXd & O, const Eigen::VectorXd & M)
     {
         this->O = O;
@@ -107,7 +105,6 @@ struct third {
     double L_a;
     double L_b;
 
-    third() {}
     third(const double & a, const double & b, const double & F_b, const double & F_a, const double & L_a)
     {
         this->a = a;
@@ -116,7 +113,7 @@ struct third {
         this->F_a = F_a;
         this->L_a = L_a;
         // `$L_b$` = 10^((a `$F_b$`log((`$L_a$`))+b(`$F_b$`-`$F_a$`))/(a`$F_a$`))
-        this->L_b = pow(10, ((this->a * this->F_b) * log(this->L_a) + this->b * (this->F_b - this->F_a)) / (this->a * this->F_a));
+        this->L_b = pow(10, (((this->a * this->F_b) * log(this->L_a) + this->b * (this->F_b - this->F_a)) / (this->a * this->F_a)));
     }
 };
 

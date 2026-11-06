@@ -23,28 +23,38 @@ class fairing:
         # A_ij = { 1 if (i,j) ∈ E
         #          1 if (j,i) ∈ E
         #          0 otherwise
-        dense_1 = np.zeros((n, n))
+        rows_1 = []
+        cols_2 = []
+        vals_3 = []
         for i in range(1, n+1):
             for j in range(1, n+1):
-                ret_2 = 0
+                ret_4 = 0
                 if (i-1, j-1) in E:
-                    ret_2 = 1
+                    ret_4 = 1
                 elif (j-1, i-1) in E:
-                    ret_2 = 1
+                    ret_4 = 1
                 else:
-                    ret_2 = 0
-                dense_1[i-1, j-1] = ret_2
-        self.A = sparse.csr_matrix(dense_1)
+                    ret_4 = 0
+                if ret_4 != 0:
+                    rows_1.append(i-1)
+                    cols_2.append(j-1)
+                    vals_3.append(ret_4)
+        self.A = sparse.csr_matrix((vals_3, (rows_1, cols_2)), shape=(n, n))
         # D_ii = ∑_j A_ij
-        dense_3 = np.zeros((n, n))
+        rows_5 = []
+        cols_6 = []
+        vals_7 = []
         for i in range(1, n+1):
-            sum_4 = 0
+            sum_8 = 0
             for j in range(1, n+1):
-                sum_4 += self.A.tocsr()[i-1, j-1]
-            dense_3[i-1, i-1] = sum_4
-        self.D = sparse.csr_matrix(dense_3)
+                sum_8 += self.A.tocsr()[i-1, j-1]
+            if sum_8 != 0:
+                rows_5.append(i-1)
+                cols_6.append(i-1)
+                vals_7.append(sum_8)
+        self.D = sparse.csr_matrix((vals_7, (rows_5, cols_6)), shape=(n, n))
         # L = D⁻¹ ( D - A )
-        self.L = sparse.linalg.spsolve(self.D, self.D - self.A)
+        self.L = sparse.linalg.spsolve(self.D, (self.D - self.A))
         # `V'` = (L + w diag(B))⁻¹ (w diag(B) V)
-        self.V_apostrophe = np.linalg.solve(self.L + self.w * np.diag(B), (self.w * np.diag(B)) @ V)
+        self.V_apostrophe = np.linalg.solve((self.L + self.w * np.diag(B)), ((self.w * np.diag(B)) @ V))
 

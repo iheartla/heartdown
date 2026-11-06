@@ -52,7 +52,6 @@ struct siere {
     Eigen::MatrixXd G_circumflex_accent_ru;
     Eigen::MatrixXd u_plus_sign;
 
-    siere() {}
     siere(const Eigen::MatrixXd & U_s, const Eigen::MatrixXd & M, const Eigen::VectorXd & v, const Eigen::VectorXd & f, const Eigen::MatrixXd & K, const Eigen::MatrixXd & boldsymbolI, const double & h, const std::function<Eigen::MatrixXd(Eigen::MatrixXd)> & φ_1, const Eigen::MatrixXd & u)
     {
         this->U_s = U_s;
@@ -101,7 +100,7 @@ struct siere {
         this->G_circumflex_accent_ru = [&](){ Eigen::MatrixXd m(2*this->s, 1); m << (this->U_s.transpose() * this->M) * this->v, this->U_s.transpose() * this->f; return m; }();
         // `$u_+$` =  u + (`$\boldsymbol{I}$` -h`$J_H$`)⁻¹(h `$H(u)$` + h[`$U_s$` 0
         //                                                0   `$U_s$`] `$φ_1$`(h`$J_G^r$`) `$G^r(u)$`)
-        this->u_plus_sign = this->u + ((this->boldsymbolI - this->h * this->J_H).eval()).colPivHouseholderQr().solve((this->h * this->Hu + ((this->h * [&](){ Eigen::MatrixXd m(2*this->n, 2*this->s); m << this->U_s, Eigen::MatrixXd::Zero(this->n, this->s), Eigen::MatrixXd::Zero(this->n, this->s), this->U_s; return m; }()) * this->φ_1(this->h * this->J_G_circumflex_accent_r)) * this->G_circumflex_accent_ru).eval());
+        this->u_plus_sign = this->u + (((this->boldsymbolI - this->h * this->J_H)).eval()).colPivHouseholderQr().solve(((this->h * this->Hu + ((this->h * [&](){ Eigen::MatrixXd m(2*this->n, 2*this->s); m << this->U_s, Eigen::MatrixXd::Zero(this->n, this->s), Eigen::MatrixXd::Zero(this->n, this->s), this->U_s; return m; }()) * this->φ_1(this->h * this->J_G_circumflex_accent_r)) * this->G_circumflex_accent_ru)).eval());
     }
 };
 
@@ -118,7 +117,6 @@ struct second {
     Eigen::MatrixXd Z_2;
     Eigen::MatrixXd J_G;
 
-    second() {}
     second(const Eigen::MatrixXd & U_s, const Eigen::MatrixXd & M, const Eigen::MatrixXd & K)
     {
         this->U_s = U_s;

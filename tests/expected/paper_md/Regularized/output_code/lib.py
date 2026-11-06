@@ -29,29 +29,29 @@ class Regularized:
 
     def boldsymbolu(self, boldsymbolr):
         boldsymbolr = np.asarray(boldsymbolr, dtype=np.float64)
-        return (((self.a - self.b) / self.r) * np.identity(3) + (((self.b / (self.r**3)) * boldsymbolr)).reshape(-1, 1) @ (boldsymbolr).reshape(1, -1)) @ self.boldsymbolf
+        return (((self.a - self.b) / self.r) * np.identity(3) + (((self.b / (np.power(self.r, 3))) * boldsymbolr)).reshape(-1, 1) @ (boldsymbolr).reshape(1, -1)) @ self.boldsymbolf
 
     def rho_ε(self, boldsymbolr):
         boldsymbolr = np.asarray(boldsymbolr, dtype=np.float64)
-        return (15 * (self.r_ε**4)) / (8 * np.pi) + 1 / (self.r_ε**7)
+        return ((15 * (np.power(self.r_ε, 4))) / (8 * np.pi) + 1 / (np.power(self.r_ε, 7)))
 
     def boldsymbolu_ε(self, boldsymbolr):
         boldsymbolr = np.asarray(boldsymbolr, dtype=np.float64)
-        return (((self.a - self.b) / self.r_ε) * np.identity(3) + (((self.b / (self.r_ε**3)) * boldsymbolr)).reshape(-1, 1) @ (boldsymbolr).reshape(1, -1) + ((self.a * (self.ε**2)) / (2 * (self.r_ε**3))) * np.identity(3)) @ self.boldsymbolf
+        return (((self.a - self.b) / self.r_ε) * np.identity(3) + (((self.b / (np.power(self.r_ε, 3))) * boldsymbolr)).reshape(-1, 1) @ (boldsymbolr).reshape(1, -1) + ((self.a * (np.power(self.ε, 2))) / (2 * (np.power(self.r_ε, 3)))) * np.identity(3)) @ self.boldsymbolf
 
     def tildeboldsymbolu_ε(self, boldsymbolr):
         boldsymbolr = np.asarray(boldsymbolr, dtype=np.float64)
-        return -((self.a * (1 / (self.r_ε**3) + (3 * (self.ε**2)) / (2 * (self.r_ε**5)))) * self.boldsymbolF) @ boldsymbolr + (self.b * ((1 / (self.r_ε**3)) * (self.boldsymbolF + self.boldsymbolF.T + np.trace(self.boldsymbolF) * np.identity(3)) - (((3 / (self.r_ε**5)) * (np.asarray(((boldsymbolr).reshape(1, -1) @ self.boldsymbolF) @ boldsymbolr).item())) * np.identity(3)))) @ boldsymbolr
+        return -(((self.a * (1 / (np.power(self.r_ε, 3)) + (3 * (np.power(self.ε, 2))) / (2 * (np.power(self.r_ε, 5))))) * self.boldsymbolF) @ boldsymbolr) + (self.b * ((1 / (np.power(self.r_ε, 3))) * (self.boldsymbolF + self.boldsymbolF.T + np.trace(self.boldsymbolF) * np.identity(3)) - (((3 / (np.power(self.r_ε, 5))) * (np.asarray(((boldsymbolr).reshape(1, -1) @ self.boldsymbolF) @ boldsymbolr).item())) * np.identity(3)))) @ boldsymbolr
 
     def boldsymbolt_ε(self, boldsymbolr):
         boldsymbolr = np.asarray(boldsymbolr, dtype=np.float64)
-        return -((self.a * (1 / (self.r_ε**3) + (3 * (self.ε**2)) / (2 * (self.r_ε**5)))) * self.boldsymbolF) @ boldsymbolr
+        return -(((self.a * (1 / (np.power(self.r_ε, 3)) + (3 * (np.power(self.ε, 2))) / (2 * (np.power(self.r_ε, 5))))) * self.boldsymbolF) @ boldsymbolr)
 
     def boldsymbols_ε(self, boldsymbolr):
         boldsymbolr = np.asarray(boldsymbolr, dtype=np.float64)
-        return ((2 * self.b - self.a) * (1 / (self.r_ε**3) + (3 * (self.ε**2)) / (2 * (self.r_ε**5)))) * (self.s * boldsymbolr)
+        return ((2 * self.b - self.a) * (1 / (np.power(self.r_ε, 3)) + (3 * (np.power(self.ε, 2))) / (2 * (np.power(self.r_ε, 5))))) * (self.s * boldsymbolr)
 
     def boldsymbolp_ε(self, boldsymbolr):
         boldsymbolr = np.asarray(boldsymbolr, dtype=np.float64)
-        return (((2 * self.b - self.a) / (self.r_ε**3)) * self.boldsymbolF) @ boldsymbolr - (((3 / (2 * (self.r_ε**5))) * (((2 * self.b) * (np.asarray(((boldsymbolr).reshape(1, -1) @ self.boldsymbolF) @ boldsymbolr).item())) * np.identity(3) + (self.a * (self.ε**2)) * self.boldsymbolF)) @ boldsymbolr)
+        return (((2 * self.b - self.a) / (np.power(self.r_ε, 3))) * self.boldsymbolF) @ boldsymbolr - (((3 / (2 * (np.power(self.r_ε, 5)))) * (((2 * self.b) * (np.asarray(((boldsymbolr).reshape(1, -1) @ self.boldsymbolF) @ boldsymbolr).item())) * np.identity(3) + (self.a * (np.power(self.ε, 2))) * self.boldsymbolF)) @ boldsymbolr)
 

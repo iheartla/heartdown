@@ -70,23 +70,23 @@ class ICP:
         # `$\varepsilon_{plane}$` = ∑_i ((R p_i + t - q_i) ⋅ `$n_q$`_i)^2
         sum_5 = 0
         for i in range(1, p_n+1):
-            sum_5 += np.dot((R @ p[i-1] + t - q[i-1]).ravel(), (n_q[i-1]).ravel())**2
+            sum_5 += np.power((np.dot(((R @ p[i-1] + t - q[i-1])).ravel(), (n_q[i-1]).ravel())), 2)
         self.varepsilon_plane = sum_5
         # `$\varepsilon_{symm-RN}$` = ∑_i ((R p_i + R⁻¹ q_i + t) ⋅ (R`$n_p$`_i + R⁻¹`$n_q$`_i))^2
         sum_6 = 0
         for i in range(1, p_n+1):
-            sum_6 += np.dot((R @ p[i-1] + np.linalg.solve(R, q[i-1]) + t).ravel(), (R @ n_p[i-1] + np.linalg.solve(R, n_q[i-1])).ravel())**2
+            sum_6 += np.power((np.dot(((R @ p[i-1] + np.linalg.solve(R, q[i-1]) + t)).ravel(), ((R @ n_p[i-1] + np.linalg.solve(R, n_q[i-1]))).ravel())), 2)
         self.varepsilon_symmRN = sum_6
         # `$\varepsilon_{symm}$` = ∑_i cos²(θ)((p_i - q_i)⋅n_i +((p_i+q_i)×n_i)⋅ã+n_i⋅t̃)²
         sum_7 = 0
         for i in range(1, p_n+1):
-            sum_7 += (np.cos(θ)**2) * ((np.dot((p[i-1] - q[i-1]).ravel(), (self.n[i-1]).ravel()) + np.dot((np.cross(p[i-1] + q[i-1], self.n[i-1])).ravel(), (self.ã).ravel()) + np.dot((self.n[i-1]).ravel(), (self.t̃).ravel()))**2)
+            sum_7 += (np.power(np.cos(θ), 2)) * (np.power((np.dot(((p[i-1] - q[i-1])).ravel(), (self.n[i-1]).ravel()) + np.dot(((np.cross((p[i-1] + q[i-1]), self.n[i-1]))).ravel(), (self.ã).ravel()) + np.dot((self.n[i-1]).ravel(), (self.t̃).ravel())), 2))
         self.varepsilon_symm = sum_7
         # S = trans(`$\bar{q}$`) ⋅ rot(θ, ã/||ã||) ⋅trans(t̃ cos(θ)) ⋅rot(θ, ã/||ã||)⋅ trans(-`$\bar{p}$`)
         self.S = (((trans(barq) @ rot(θ, self.ã / np.linalg.norm(self.ã, 2))) @ trans(self.t̃ * np.cos(θ))) @ rot(θ, self.ã / np.linalg.norm(self.ã, 2))) @ trans(-barp)
         # `$\varepsilon_{two-plane}$` = ∑_i(((R p_i + R⁻¹ q_i + t) ⋅ (R `$n_p$`_i))^2 + ((R p_i + R⁻¹ q_i + t) ⋅ (R⁻¹`$n_q$`_i))^2)
         sum_8 = 0
         for i in range(1, p_n+1):
-            sum_8 += np.dot((R @ p[i-1] + np.linalg.solve(R, q[i-1]) + t).ravel(), (R @ n_p[i-1]).ravel())**2 + np.dot((R @ p[i-1] + np.linalg.solve(R, q[i-1]) + t).ravel(), (np.linalg.solve(R, n_q[i-1])).ravel())**2
+            sum_8 += (np.power((np.dot(((R @ p[i-1] + np.linalg.solve(R, q[i-1]) + t)).ravel(), ((R @ n_p[i-1])).ravel())), 2) + np.power((np.dot(((R @ p[i-1] + np.linalg.solve(R, q[i-1]) + t)).ravel(), ((np.linalg.solve(R, n_q[i-1]))).ravel())), 2))
         self.varepsilon_twoplane = sum_8
 

@@ -408,15 +408,16 @@ requires-dist = [
     { name = "cppyy", marker = "extra == 'test'" },
     { name = "graphviz", marker = "extra == 'viz'" },
     { name = "numpy", marker = "extra == 'test'" },
+    { name = "oct2py", marker = "extra == 'octave'" },
     { name = "pymupdf", marker = "extra == 'gui'" },
     { name = "regex" },
     { name = "scipy", marker = "extra == 'test'" },
     { name = "sympy" },
-    { name = "tatsu", specifier = ">=5.8.3,<5.15" },
+    { name = "tatsu", specifier = "==5.15.1" },
     { name = "wasmtime", marker = "sys_platform != 'emscripten'" },
     { name = "wxpython", marker = "extra == 'gui'" },
 ]
-provides-extras = ["gui", "viz", "test"]
+provides-extras = ["gui", "viz", "test", "octave"]
 
 [[package]]
 name = "iniconfig"
@@ -1379,11 +1380,11 @@ wheels = [
 
 [[package]]
 name = "tatsu"
-version = "5.14.0"
+version = "5.15.1"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/9b/5e/0c3a1ca27ac8cb4599ae936ea5aee9bb6a40add9096fb14d30065ddf65bc/tatsu-5.14.0.tar.gz", hash = "sha256:dac8a83411c48d61e2cb2b9ff718aff6dd65981d91217974adfb815ee01b16c6", size = 132590, upload-time = "2025-12-25T23:25:56.513Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/dc/0b/46725961e0b77e88352e60b9e78aef268cacd6dfae7f1527a348b0247606/tatsu-5.15.1.tar.gz", hash = "sha256:38b0467dbf086f032a7321023e65a773201c1acdebe0e9ac35c5ec26637e0b0d", size = 133908, upload-time = "2026-01-04T13:39:47.97Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/55/50/e2419fbb7a34a984d93edcf3e12f259175ae3b294b8228bfa680b61fba69/tatsu-5.14.0-py3-none-any.whl", hash = "sha256:8d3d6f259b22b033f111f786cbc963cef96c53dcad102bd96db9d8f7c6502e55", size = 80853, upload-time = "2025-12-25T23:25:54.824Z" },
+    { url = "https://files.pythonhosted.org/packages/e8/2f/7afdd76cac1511c456fdd880394cd54bc27ff5d991d3cb6b2ce0720b7d80/tatsu-5.15.1-py3-none-any.whl", hash = "sha256:3a1229eec55dcb1da7ae2842b1abf26bb746e92dc6734ab6785e84cecb465f06", size = 80069, upload-time = "2026-01-04T13:39:46.358Z" },
 ]
 
 [[package]]

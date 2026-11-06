@@ -41,7 +41,6 @@ struct perceptual {
     double increment_Q_P;
     double increment_Q_O;
 
-    perceptual() {}
     perceptual(const std::function<double(double)> & CSF, const std::vector<double> & ω, const double & m_combining_tilde_t_comma_b, const double & β_b, const double & σ_P_circumflex_accent_A, const double & σ_P_circumflex_accent_B, const double & σ_O_circumflex_accent_A, const double & σ_O_circumflex_accent_B)
     {
         this->CSF = CSF;
@@ -71,7 +70,7 @@ struct perceptual {
 
     double E_b(const double & σ)
     {
-        return [&](){ double sum = 0.0; for(int i = 1; i <= this->ω_n; i++){ sum += pow(this->m̃(this->ω.at(i-1), σ) / this->m_combining_tilde_t_comma_b, this->β_b); } return sum; }();
+        return [&](){ double sum = 0.0; for(int i = 1; i <= this->ω_n; i++){ sum += pow((this->m̃(this->ω.at(i-1), σ) / this->m_combining_tilde_t_comma_b), this->β_b); } return sum; }();
     }
 };
 

@@ -38,7 +38,6 @@ struct MeshSmoothing {
     long n;
     double ret;
 
-    MeshSmoothing() {}
     MeshSmoothing(const Eigen::MatrixXd & V, const Eigen::SparseMatrix<double> & L, const double & λ)
     {
         this->V = V;

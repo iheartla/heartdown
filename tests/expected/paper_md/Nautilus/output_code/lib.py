@@ -34,6 +34,6 @@ class nautilus:
         x = np.asarray(x, dtype=np.float64)
         sum_1 = 0
         for i in range(1, self.v_n+1):
-            sum_1 += np.linalg.norm(self.H @ self.v[i-1] - ((self.P @ self.S) @ np.linalg.solve(self.P, self.v[i-1])), 'fro')**2
-        return self.λ * (np.linalg.norm(np.hstack((x[4], x[7],)) - np.hstack((x[8], x[5],)), 2)**2) + sum_1
+            sum_1 += np.power(np.linalg.norm(self.H @ self.v[i-1] - ((self.P @ self.S) @ np.linalg.solve(self.P, self.v[i-1])), 'fro'), 2)
+        return self.λ * (np.power(np.linalg.norm(np.hstack((x[4], x[7],)) - np.hstack((x[8], x[5],)), 2), 2)) + sum_1
 

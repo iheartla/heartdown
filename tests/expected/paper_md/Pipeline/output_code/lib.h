@@ -57,7 +57,6 @@ struct pipeline {
     double α_1;
     double α_2;
 
-    pipeline() {}
     pipeline(const double & f_x, const double & f_y, const double & c_x, const double & c_y, const double & r, const std::function<Eigen::Matrix<double, 2, 1>(Eigen::Matrix<double, 2, 1>)> & φ_circumflex_accent_1_d, const std::function<Eigen::Matrix<double, 2, 1>(Eigen::Matrix<double, 2, 1>)> & φ_d, const Eigen::Matrix<double, 2, 1> & x_i, const Eigen::Matrix<double, 2, 1> & x_j, const double & α_i, const double & α_j, const double & y, const double & X, const double & Y, const double & Z, const double & x)
     {
         this->f_x = f_x;
@@ -89,7 +88,7 @@ struct pipeline {
         // B = Z⋅`$f_x$` + X⋅(x -`$c_x$` )
         this->B = this->Z * this->f_x + this->X * (this->x - this->c_x);
         // D = √(A^2 +B^2)
-        this->D = sqrt(pow(this->A, 2) + pow(this->B, 2));
+        this->D = sqrt((pow(this->A, 2) + pow(this->B, 2)));
         // γ = arctan(B/A)
         this->γ = atan(this->B / this->A);
         // C = -r⋅(x -`$c_x$` )

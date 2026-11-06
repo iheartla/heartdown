@@ -39,7 +39,6 @@ struct clustering {
     long w_n;
     double ret;
 
-    clustering() {}
     clustering(const std::vector<Eigen::VectorXd> & y, const std::vector<double> & w)
     {
         this->y = y;

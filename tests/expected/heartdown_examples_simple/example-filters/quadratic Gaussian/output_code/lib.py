@@ -13,9 +13,9 @@ class filters:
     def f(self, x):
         ret_1 = 0
         if np.absolute(x) < (1/3):
-            ret_1 = 1 - (3 * (x**2))
+            ret_1 = 1 - (3 * (np.power(x, 2)))
         elif np.absolute(x) < 1:
-            ret_1 = (1.5) * (x**2) - (3 * np.absolute(x)) + 1.5
+            ret_1 = (1.5) * (np.power(x, 2)) - (3 * np.absolute(x)) + 1.5
         else:
             ret_1 = 0
         return ret_1

@@ -31,7 +31,7 @@ class perceptual:
         self.increment_Q_O = self.E_b(σ_O_circumflex_accent_A) - self.E_b(σ_O_circumflex_accent_B)
 
     def m(self, ω, σ):
-        return np.exp(-((2 * (np.pi**2)) * (ω**2)) * (σ**2))
+        return np.exp(-(((2 * (np.power(np.pi, 2))) * (np.power(ω, 2))) * (np.power(σ, 2))))
 
     def m̃(self, ω, σ):
         return self.CSF(ω) * self.m(ω, σ)
@@ -39,6 +39,6 @@ class perceptual:
     def E_b(self, σ):
         sum_1 = 0
         for i in range(1, self.ω_n+1):
-            sum_1 += (self.m̃(self.ω[i-1], σ) / self.m_combining_tilde_t_comma_b)**self.β_b
+            sum_1 += np.power((self.m̃(self.ω[i-1], σ) / self.m_combining_tilde_t_comma_b), self.β_b)
         return sum_1
 

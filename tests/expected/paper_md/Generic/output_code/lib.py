@@ -24,5 +24,5 @@ class Generic:
         # `$v_p$` = (-v, u)
         self.v_p = np.hstack((-v, u,))
         # M=[-J`$x_p$`+`$v_p$`  J  `$x_p$`  I_2]
-        self.M = np.block([[(-J @ self.x_p + self.v_p).reshape(-1, 1), J, (self.x_p).reshape(-1, 1), np.identity(2)]]).astype(np.float64)
+        self.M = np.block([[(-(J @ self.x_p) + self.v_p).reshape(-1, 1), J, (self.x_p).reshape(-1, 1), np.identity(2)]]).astype(np.float64)
 

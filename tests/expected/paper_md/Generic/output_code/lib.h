@@ -38,7 +38,6 @@ struct Generic {
     Eigen::Matrix<double, 2, 1> v_p;
     Eigen::Matrix<double, 2, 6> M;
 
-    Generic() {}
     Generic(const Eigen::Matrix<double, 2, 2> & J, const double & x, const double & y, const double & u, const double & v)
     {
         this->J = J;

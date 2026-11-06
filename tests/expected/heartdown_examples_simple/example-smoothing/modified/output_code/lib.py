@@ -26,7 +26,7 @@ class MeshSmoothing:
 
     def E_textdata(self, U):
         U = np.asarray(U, dtype=np.float64)
-        return np.linalg.norm(U - self.V, 'fro')**2
+        return np.power(np.linalg.norm(U - self.V, 'fro'), 2)
 
     def E_textsmoothness(self, U):
         U = np.asarray(U, dtype=np.float64)

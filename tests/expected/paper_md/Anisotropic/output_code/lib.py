@@ -20,7 +20,7 @@ class Anisotropic:
         # A = a a^T
         self.A = (a).reshape(-1, 1) @ (a).reshape(1, -1)
         # `$\lambda_{0,1,2}$`=2||a||_2^2
-        self.lambda_0_comma_1_comma_2 = 2 * (np.linalg.norm(a, 2)**2)
+        self.lambda_0_comma_1_comma_2 = 2 * (np.power(np.linalg.norm(a, 2), 2))
         # `$I_5$` = tr(CA)
         self.I_5 = np.trace(C @ self.A)
         # `$\frac{∂I₅}{∂F}$` = 2FA
@@ -51,7 +51,7 @@ class Anisotropic2D:
         self.a = a
         self.A = A
         # `$\lambda_{0,1}$`=2||a||_2^2
-        self.lambda_0_comma_1 = 2 * (np.linalg.norm(a, 2)**2)
+        self.lambda_0_comma_1 = 2 * (np.power(np.linalg.norm(a, 2), 2))
         # `$\frac{∂²I₅}{∂f²}$` = 2[A₁,₁I_2  A₁,₂I_2
         #                A₂,₁I_2  A₂,₂I_2]
         self.fracdee2I5deef2 = 2 * np.block([[A[0, 0] * np.identity(2), A[0, 1] * np.identity(2)], [A[1, 0] * np.identity(2), A[1, 1] * np.identity(2)]]).astype(np.float64)

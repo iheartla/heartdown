@@ -23,7 +23,7 @@ class clustering:
             c = x_1[0:0+m]
             sum_3 = 0
             for i in range(1, w_n+1):
-                sum_3 += w[i-1] * (np.linalg.norm(y[i-1] - c, 2)**2)
+                sum_3 += w[i-1] * (np.power(np.linalg.norm(y[i-1] - c, 2), 2))
             return (sum_3)
         res_4 = minimize(objective_2, np.zeros(m))
         self.c = res_4.x[0:0+m]

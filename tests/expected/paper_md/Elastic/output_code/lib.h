@@ -42,7 +42,6 @@ struct elastic {
         long n;
         double E_q;
     
-        connection() {}
         connection(const Eigen::VectorXd & q_g, const Eigen::VectorXd & q_h, const Eigen::VectorXd & m_g, const Eigen::VectorXd & m_h, const std::function<Eigen::VectorXd(Eigen::VectorXd, Eigen::VectorXd)> & angle, const double & λ_q_comma_1, const double & λ_q_comma_2, const double & t)
         {
             this->q_g = q_g;
@@ -74,7 +73,6 @@ struct elastic {
         long n;
         double E_a;
     
-        anchor() {}
         anchor(const double & λ_a_comma_1, const double & λ_a_comma_2, const Eigen::VectorXd & q, const Eigen::VectorXd & q_a, const Eigen::VectorXd & m, const Eigen::VectorXd & m_a, const std::function<Eigen::VectorXd(Eigen::VectorXd, Eigen::VectorXd)> & angle)
         {
             this->λ_a_comma_1 = λ_a_comma_1;
@@ -102,7 +100,6 @@ struct elastic {
         double β_circumflex_accent_plus_sign;
         double E_n;
     
-        notchlimit() {}
         notchlimit(const double & δ_circumflex_accent_minus_sign, const double & δ_circumflex_accent_plus_sign, const double & β_q, const double & β_circumflex_accent_minus_sign, const double & β_circumflex_accent_plus_sign)
         {
             this->δ_circumflex_accent_minus_sign = δ_circumflex_accent_minus_sign;
@@ -111,7 +108,7 @@ struct elastic {
             this->β_circumflex_accent_minus_sign = β_circumflex_accent_minus_sign;
             this->β_circumflex_accent_plus_sign = β_circumflex_accent_plus_sign;
             // `E_n` = `$δ^{(−)}$`(1/10 log((`$β_q$`-`$β^{(−)}$`)))^2 + `$δ^{(+)}$`(1/10 log((`$β^{(+)}$`-`$β_q$`)))^2
-            this->E_n = this->δ_circumflex_accent_minus_sign * pow((double(1) / 10) * log(this->β_q - this->β_circumflex_accent_minus_sign), 2) + this->δ_circumflex_accent_plus_sign * pow((double(1) / 10) * log(this->β_circumflex_accent_plus_sign - this->β_q), 2);
+            this->E_n = this->δ_circumflex_accent_minus_sign * pow(((double(1) / 10) * log((this->β_q - this->β_circumflex_accent_minus_sign))), 2) + this->δ_circumflex_accent_plus_sign * pow(((double(1) / 10) * log((this->β_circumflex_accent_plus_sign - this->β_q))), 2);
         }
     };
     struct penalty {
@@ -121,14 +118,13 @@ struct elastic {
         double β_q;
         double E_p;
     
-        penalty() {}
         penalty(const double & μ, const double & ε, const double & β_q)
         {
             this->μ = μ;
             this->ε = ε;
             this->β_q = β_q;
             // `E_p` = (μ log((ε + `$β_q$`)))^2 + (μ log((ε + 1 - `$β_q$`)))^2
-            this->E_p = pow(this->μ * log(this->ε + this->β_q), 2) + pow(this->μ * log(this->ε + 1 - this->β_q), 2);
+            this->E_p = pow((this->μ * log((this->ε + this->β_q))), 2) + pow((this->μ * log((this->ε + 1 - this->β_q))), 2);
         }
     };
     connection _connection;
@@ -164,8 +160,8 @@ struct elastic {
     long n;
     double E;
 
-    elastic() {}
     elastic(const double & E_r, const Eigen::VectorXd & q_g, const Eigen::VectorXd & q_h, const Eigen::VectorXd & m_g, const Eigen::VectorXd & m_h, const std::function<Eigen::VectorXd(Eigen::VectorXd, Eigen::VectorXd)> & angle, const double & λ_q_comma_1, const double & λ_q_comma_2, const double & t, const double & λ_a_comma_1, const double & λ_a_comma_2, const Eigen::VectorXd & q, const Eigen::VectorXd & q_a, const Eigen::VectorXd & m, const Eigen::VectorXd & m_a, const double & δ_circumflex_accent_minus_sign, const double & δ_circumflex_accent_plus_sign, const double & β_q, const double & β_circumflex_accent_minus_sign, const double & β_circumflex_accent_plus_sign, const double & μ, const double & ε)
+    : _connection(q_g, q_h, m_g, m_h, angle, λ_q_comma_1, λ_q_comma_2, t), _anchor(λ_a_comma_1, λ_a_comma_2, q, q_a, m, m_a, angle), _notchlimit(δ_circumflex_accent_minus_sign, δ_circumflex_accent_plus_sign, β_q, β_circumflex_accent_minus_sign, β_circumflex_accent_plus_sign), _penalty(μ, ε, β_q)
     {
         this->E_r = E_r;
         this->q_g = q_g;
@@ -198,13 +194,9 @@ struct elastic {
         assert( q_a.rows() == this->n );
         assert( m.rows() == this->n );
         assert( m_a.rows() == this->n );
-        this->_connection = connection(this->q_g, this->q_h, this->m_g, this->m_h, this->angle, this->λ_q_comma_1, this->λ_q_comma_2, this->t);
         this->E_q = this->_connection.E_q;
-        this->_anchor = anchor(this->λ_a_comma_1, this->λ_a_comma_2, this->q, this->q_a, this->m, this->m_a, this->angle);
         this->E_a = this->_anchor.E_a;
-        this->_notchlimit = notchlimit(this->δ_circumflex_accent_minus_sign, this->δ_circumflex_accent_plus_sign, this->β_q, this->β_circumflex_accent_minus_sign, this->β_circumflex_accent_plus_sign);
         this->E_n = this->_notchlimit.E_n;
-        this->_penalty = penalty(this->μ, this->ε, this->β_q);
         this->E_p = this->_penalty.E_p;
         // E = `E_r` + `E_q` + `E_a` + `E_n` + `E_p`
         this->E = this->E_r + this->E_q + this->E_a + this->E_n + this->E_p;
@@ -224,7 +216,6 @@ struct connection {
     long n;
     double E_q;
 
-    connection() {}
     connection(const Eigen::VectorXd & q_g, const Eigen::VectorXd & q_h, const Eigen::VectorXd & m_g, const Eigen::VectorXd & m_h, const std::function<Eigen::VectorXd(Eigen::VectorXd, Eigen::VectorXd)> & angle, const double & λ_q_comma_1, const double & λ_q_comma_2, const double & t)
     {
         this->q_g = q_g;
@@ -257,7 +248,6 @@ struct anchor {
     long n;
     double E_a;
 
-    anchor() {}
     anchor(const double & λ_a_comma_1, const double & λ_a_comma_2, const Eigen::VectorXd & q, const Eigen::VectorXd & q_a, const Eigen::VectorXd & m, const Eigen::VectorXd & m_a, const std::function<Eigen::VectorXd(Eigen::VectorXd, Eigen::VectorXd)> & angle)
     {
         this->λ_a_comma_1 = λ_a_comma_1;
@@ -286,7 +276,6 @@ struct notchlimit {
     double β_circumflex_accent_plus_sign;
     double E_n;
 
-    notchlimit() {}
     notchlimit(const double & δ_circumflex_accent_minus_sign, const double & δ_circumflex_accent_plus_sign, const double & β_q, const double & β_circumflex_accent_minus_sign, const double & β_circumflex_accent_plus_sign)
     {
         this->δ_circumflex_accent_minus_sign = δ_circumflex_accent_minus_sign;
@@ -295,7 +284,7 @@ struct notchlimit {
         this->β_circumflex_accent_minus_sign = β_circumflex_accent_minus_sign;
         this->β_circumflex_accent_plus_sign = β_circumflex_accent_plus_sign;
         // `E_n` = `$δ^{(−)}$`(1/10 log((`$β_q$`-`$β^{(−)}$`)))^2 + `$δ^{(+)}$`(1/10 log((`$β^{(+)}$`-`$β_q$`)))^2
-        this->E_n = this->δ_circumflex_accent_minus_sign * pow((double(1) / 10) * log(this->β_q - this->β_circumflex_accent_minus_sign), 2) + this->δ_circumflex_accent_plus_sign * pow((double(1) / 10) * log(this->β_circumflex_accent_plus_sign - this->β_q), 2);
+        this->E_n = this->δ_circumflex_accent_minus_sign * pow(((double(1) / 10) * log((this->β_q - this->β_circumflex_accent_minus_sign))), 2) + this->δ_circumflex_accent_plus_sign * pow(((double(1) / 10) * log((this->β_circumflex_accent_plus_sign - this->β_q))), 2);
     }
 };
 
@@ -306,14 +295,13 @@ struct penalty {
     double β_q;
     double E_p;
 
-    penalty() {}
     penalty(const double & μ, const double & ε, const double & β_q)
     {
         this->μ = μ;
         this->ε = ε;
         this->β_q = β_q;
         // `E_p` = (μ log((ε + `$β_q$`)))^2 + (μ log((ε + 1 - `$β_q$`)))^2
-        this->E_p = pow(this->μ * log(this->ε + this->β_q), 2) + pow(this->μ * log(this->ε + 1 - this->β_q), 2);
+        this->E_p = pow((this->μ * log((this->ε + this->β_q))), 2) + pow((this->μ * log((this->ε + 1 - this->β_q))), 2);
     }
 };
 

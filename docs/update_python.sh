@@ -23,7 +23,8 @@ with zipfile.ZipFile("docs/heartdown-py.zip", "w", zipfile.ZIP_DEFLATED) as z:
     add_tree(z, "markdown", lambda f: f.endswith(".py"), "deps/markdown")
     # the compiler (the Rust compiler as WebAssembly, rust/iheartla.wasm, which
     # iheartla/rust_heartdown.py runs), with its bundled I❤️MESH modules (.hlang)
-    add_tree(z, "iheartla", lambda f: f.endswith((".py", ".hlang", ".wasm")), "deps/iheartla")
+    # and the C++ support files (mesh/Cpp) that app.py copies to output_code/heartlang
+    add_tree(z, "iheartla", lambda f: f.endswith((".py", ".hlang", ".wasm", ".h", ".hpp", ".cpp")), "deps/iheartla")
     add_tree(z, "extras/heartdown-resource", lambda f: not f.startswith("."))
 PY
 du -h docs/heartdown-py.zip

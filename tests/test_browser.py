@@ -159,6 +159,27 @@ plt.plot([0, 1])
 plt.savefig("cotangent.png")"""))
 
 
+def test_cpp_support_files(page):
+    # The C++ that lib.h includes is in output_code/, which the editor's code download and Zip have
+    compile_source(page, """---
+full_paper: False
+---
+❤: derivative
+
+# Derivative
+
+```iheartla
+A = x ⋅ x
+G = ∂A/∂x
+where
+x ∈ ℝ^3
+```
+""")
+    files = project_files(page)
+    assert "output_code/lib.h" in files and "output_code/heartlang/include/type_helper.h" in files, sorted(files)
+    assert "output_code/heartlang/include/TriangleMesh.h" not in files
+
+
 def test_front_matter_requirements(page):
     compile_source(page, paper_with_figure("requirements:\n  - libigl==2.6.4.dev3",
                                            IGL_FIGURE.format(version="2.6.4.dev3")))

@@ -41,6 +41,9 @@ IN_BROWSER = sys.platform == 'emscripten'
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 # The I❤️MESH runtime (triangle_mesh.py), which lib.py imports for a paper with meshes
 MESH_RUNTIME_DIR = os.path.join(os.path.dirname(os.path.abspath(sys.modules['iheartla'].__file__)), 'mesh', 'Python')
+# The C++ support files that lib.h includes (type_helper.h for derivatives, the mesh classes for meshes)
+CPP_SUPPORT_DIR = os.path.join(os.path.dirname(MESH_RUNTIME_DIR), 'Cpp')
+CPP_INCLUDE_RE = STDLIB_RE.compile(r'^\s*#\s*include\s+"([^"]+)"', STDLIB_RE.M)
 
 
 def run_figure_script(source, cwd):
@@ -319,6 +322,26 @@ def handle_figure(text, name_list, input_dir, md):
     return text, figure_dict
 
 
+def copy_cpp_support(code, dst):
+    # Copy the C++ support files that code includes into dst/heartlang: the headers it includes
+    # and theirs to include/, and the source file of each of them that has one to src/.
+    # lib.h compiles with -I heartlang/include.
+    todo = CPP_INCLUDE_RE.findall(code)
+    done = set()
+    while todo:
+        name = todo.pop()
+        if name in done:
+            continue
+        done.add(name)
+        for sub, file_name in (('include', name), ('src', os.path.splitext(name)[0] + '.cpp')):
+            path = os.path.join(CPP_SUPPORT_DIR, sub, file_name)
+            if os.path.isfile(path):
+                os.makedirs(os.path.join(dst, 'heartlang', sub), exist_ok=True)
+                shutil.copyfile(path, os.path.join(dst, 'heartlang', sub, file_name))
+                with open(path, encoding='utf-8') as f:
+                    todo += CPP_INCLUDE_RE.findall(f.read())
+
+
 def save_output_code(md, path):
     # if not WHEEL_MODE:
     if True:
@@ -330,6 +353,7 @@ def save_output_code(md, path):
             save_to_file(md.lib_py, "{}/{}/lib.py".format(path, OUTPUT_CODE))
         if md.lib_cpp != '':
             save_to_file(md.lib_cpp, "{}/{}/lib.h".format(path, OUTPUT_CODE))
+            copy_cpp_support(md.lib_cpp, dst)
         if md.lib_matlab != '':
             save_to_file(md.lib_matlab, "{}/{}/lib.m".format(path, OUTPUT_CODE))
 

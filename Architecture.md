@@ -11,7 +11,7 @@ paper.md ──▶ app.py: process_input
                │    mdx_bib, mdx_math, meta (YAML front matter), …
                ├─ post-processing: title, abstract, section numbers, contexts, equation numbers
                ├─ figures: runs each <figure>'s Python code against the generated lib.py
-               └─ writes paper.html, output_code/lib.{py,h,m}, <context>.ihla, heartdown-resource/
+               └─ writes paper.html, output_code/lib.{py,h,m} (and heartlang/, the C++ that lib.h includes), <context>.ihla, heartdown-resource/
 ```
 
 There are two ways to run it:
